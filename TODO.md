@@ -7,17 +7,9 @@
     - [ ] Remove nodes
 - [ ] Add anchors/blockers
 - [ ] Force simulation
+- [ ] Free dependent points when point is updated
 
 ## Notes on Forces
 
-Currently:
-
-- Link attraction
-- Fencing for completed tasks
-- Fencing for blocked tasks
-- Centering force for available tasks
-
-Consider:
-
-A fence-based configuration.
-
+Currently: Nodes are fenced into their areas by exponential forces at the
+borders.

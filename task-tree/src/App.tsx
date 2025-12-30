@@ -146,10 +146,9 @@ function constrain (n : number, min : number, max : number) : number {
   return Math.min(Math.max(n,min), max)
 }
 
-function forceYUp(y0, nodeFilter) {
-  let nodes;
-  let dir = 1;
-  //let fOB = -30.0;
+function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
+  let nodes : Node[];
+  let dir = direction ? direction : 1;
   let fIB = FENCE_FORCE;
   const decay = FENCE_DECAY;
   function force(alpha : number) {
@@ -157,41 +156,8 @@ function forceYUp(y0, nodeFilter) {
       if (!nodeFilter(node)) continue;
 
       const dy = (node.y - y0) * dir; // Positive when below line
-
-      if (dy > 0 && false) {
-        //node.vy += -100 * alpha;
-        //node.vy += fOB * alpha;
-      } else {
-        //node.vy += -1;
-        let a = fIB * Math.exp(-dy / decay) * alpha
-        node.vy += constrain(a, -10, 10)
-      }
-    }
-  }
-  force.initialize = n => {nodes = n}
-
-  return force;
-}
-
-function forceYDown(y0, nodeFilter) {
-  let nodes;
-  let dir = -1;
-  //let fOB = -20.0;
-  let fIB = FENCE_FORCE;
-  const decay = FENCE_DECAY;
-  function force(alpha : number) {
-    for (const node of nodes) {
-      if (!nodeFilter(node)) continue;
-
-      const dy = (node.y - y0) * dir; // Positive when below line
-
-      if (dy > 0 && false) {
-        //node.vy += -100 * alpha;
-        //node.vy += fOB * alpha * dir;
-      } else {
-        //node.vy += -1;
-        node.vy += fIB * Math.exp(-dy / decay) * alpha * dir;
-      }
+      let a = fIB * Math.exp(-dy / decay) * alpha * dir;
+      node.vy += constrain(a, -10, 10)
     }
   }
 
@@ -233,14 +199,17 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .alphaTarget(.1)
       .alphaDecay(.01)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("center", d3.forceX(0).strength(fCENTER))
-      .force('centerUpperBound', forceYDown(COMPLETED_TASK_SETPOINT, d => d.status != 'complete'))
-      .force('centerLowerBound', forceYUp(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceYUp(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
-      .force("blocked", forceYDown(BLOCKED_SETPOINT, d => d.task.isBlocked))
-      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
       .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
+      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+
+      .force("center", d3.forceX(0).strength(fCENTER))
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
+
+      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.status != 'complete', -1))
+      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
+      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
+      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
+
     
     const link = svg.append('g')
       //.attr('stroke', '#333')
@@ -308,9 +277,10 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .attr('height', BLOCKER_SIZE)
       .attr('rx', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
       .attr('ry', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
-      .on('mouseover', tooltipUpdate)
-      .on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
-      .on('mouseout', () => tooltip.style('visibility', 'hidden'))
+      //.on('mouseover', tooltipUpdate)
+      //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
+      //.on('mouseout', () => tooltip.style('visibility', 'hidden'))
+      .on('click', selectNode)
 
     
     nodes.forEach(d => {d.x = 0; d.y = 200; })
@@ -322,12 +292,26 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
           .on("drag", dragged)
           .on("end", dragended));
 
+    function selectNode(event, d) {
+      //alert('Selected node');
+      clearSelection(event, d);
+      tooltipUpdate(event, d);
+
+      let targetNode = event.target;
+
+      d3.select(this).attr('stroke', '#000')
+    }
+
+    function clearSelection(event, d) {
+      node.attr('stroke', null)
+    }
+    
+
+    
     simulation.on('tick', () => {
       node
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y)
-        .attr('x', d => d.x - BLOCKER_SIZE / 2)
-        .attr('y', d => d.y - BLOCKER_SIZE / 2)
+        .attr('x', d => constrain(d.x, -width/2, width/2) - BLOCKER_SIZE / 2)
+        .attr('y', d => constrain(d.y, 0, height) - BLOCKER_SIZE/2)
         .attr('fill', colorNode);
 
       link
