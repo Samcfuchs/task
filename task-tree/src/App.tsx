@@ -18,7 +18,8 @@ type Task = {
 type Node = d3.SimulationNodeDatum & {
   id: string,
   group?: number,
-  task: Task
+  task: Task,
+  hovered: boolean
 }
 
 /* Import data from an existing object */
@@ -35,6 +36,7 @@ function importData(tasks: Record<string, Task>) : Node[] {
       priority: t.priority,
       //isBlocked: true,
       //blocked: true,
+      hovered: false,
       task: t
     }
 
@@ -85,7 +87,7 @@ function recalculate(nodes : Node[]) : Node[] {
 
 function buildSimData(tasks: Record<string, Task>) {
   const nodes = recalculate(importData(tasks))
-  const links = Object.values(tasks).flatMap( t => t.dependsOn.map(c => ({source: c, target: t.id}) ))
+  const links = Object.values(tasks).flatMap( t => t.dependsOn.map(c => ({source: c, target: t.id, id: `${c}-${t.id}`}) ))
 
   //console.log(links)
 
@@ -124,6 +126,8 @@ const COMPLETED_TASK = 15 * FORCE_SCALAR;
 const RAD_SCALAR = 6;
 
 const BLOCKER_SIZE = 25;
+
+const linkGradient = [{offset: "10%", color: '#9f9'}, {offset: "90%", color: "#000"}];
 
 function colorNode( node ) {
   //console.log(node)
@@ -195,7 +199,7 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  let width = 600;
+  let width = 500;
   let height = 400;
 
   useEffect(() => {
@@ -215,6 +219,7 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
     const viz_regions = svg.append('g');
     const viz_lines = svg.append('g');
+    const defs = svg.append('defs');
     let tooltip = d3.select('div#tooltip')
     
     let { nodes, links } = buildSimData(tasks);
@@ -231,12 +236,12 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
     
     const link = svg.append('g')
-      .attr('stroke', '#333')
+      //.attr('stroke', '#333')
       .attr('stroke-width', '2')
-
-    .selectAll('line')
-    .data(links)
-    .join('line')
+      .selectAll('line')
+      .data(links, d => d.id)
+      .join('line')
+      .attr('stroke', d=>`url(#grad-${d.id})`)
 
     viz_lines.append('line')
       .attr('stroke', '#292')
@@ -270,6 +275,19 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .attr('fill', '#fff')
       .attr('opacity', 0)
     
+    const gradients = defs.selectAll('linearGradient')
+      .data(links, d => d.id)
+      .join('linearGradient')
+        .attr('id', d => `grad-${d.id}`)
+        .attr('gradientUnits', 'userSpaceOnUse')
+    
+    gradients
+      .selectAll('stop')
+      .data(linkGradient)
+      .join('stop')
+      .attr('offset', d => d.offset)
+      .attr('stop-color', d => d.color)
+    
     const node = svg.append('g')
       .attr('stroke','#555')
       .attr('stroke-width', 2)
@@ -284,7 +302,7 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .attr('rx', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
       .attr('ry', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
       .on('mouseover', tooltipUpdate)
-      .on("mousemove", () => tooltip.style("top", (event.offsetY+50)+"px").style("left",(event.offsetX+30)+"px"))
+      .on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
       .on('mouseout', () => tooltip.style('visibility', 'hidden'))
 
     
@@ -310,14 +328,21 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
         .attr('x2', d => d.target.x)
         .attr('y1', d => d.source.y)
         .attr('y2', d => d.target.y)
+      
+      gradients
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y)
     });
 
 
     function tooltipUpdate(event, d) {
       let targetNode = event.target;
-      console.log(targetNode)
-      console.log(d)
+      //console.log(targetNode)
+      //console.log(d)
 
+      d.hovered = true;
       tooltip.style('visibility', 'visible')
 
       tooltip.select('#title').text(d.task.title)
@@ -326,6 +351,7 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
       tooltip.style('left', event.x)
       tooltip.style('top', event.x)
+
 
     }
 
@@ -405,11 +431,7 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
   return (
     <div style={{border:'0px dotted blue'}}>
-    <svg ref={svgRef} >
-      <g fill='red'>
-        {Object.values(tasks).map((d,i) => (<circle key={d.id} cx={d3.randomInt(100)()} cy={d3.randomInt(100)()} r={5}/>) ) }
-      </g>
-    </svg>
+    <svg ref={svgRef}><g></g></svg>
     </div>
   )
 }
@@ -495,11 +517,10 @@ function App() {
           <p id='description'></p>
         </div>
       </div>
-      <TaskBuilder callback={console.log}/>
-      <div onClick={addTask}>Add a bubble</div>
 
     </>
   )
 }
 
+      //<TaskBuilder callback={console.log}/>
 export default App

@@ -1,20 +1,24 @@
 #root {
   max-width: 1280px;
+  margin: 0;
+  box-sizing: border-box;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+}
+
+body {
+  width: 100%;
 }
 
 #tooltip {
   border: 1px solid #555;
   border-radius: 5px;
-  width: 200px;
-  height: 200px;
   position: absolute;
   margin: 0;
   padding: 10px;
 
-  background-color: #fffe
+  background-color: #fffe;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 h2 {
@@ -22,4 +26,7 @@ h2 {
   font-size: 18px;
   text-align: left;
 
+}
+
+svg {
 }
