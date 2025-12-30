@@ -111,19 +111,24 @@ function getRandomTask() {
 
 }
 
+// Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
 const GRAVITY_SETPOINT = 200;
 const BLOCKED_SETPOINT = 250;
 
+// Fence parameters
+const FENCE_FORCE = -16;
+const FENCE_DECAY = -30;
 
-const FORCE_SCALAR = .05;
-const fGRAVITY = .0500;
+// Force strength
+//const FORCE_SCALAR = .05;
+const fGRAVITY = .0040;
 const fCHARGE = -1.999;
-const fLINK = .0105;
+const fLINK = .1505;
 const fCENTER = 0.0010;
-const COMPLETED_TASK = 15 * FORCE_SCALAR;
+//const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
-const RAD_SCALAR = 6;
+const RAD_SCALAR = 8;
 
 const BLOCKER_SIZE = 25;
 
@@ -144,9 +149,9 @@ function constrain (n : number, min : number, max : number) : number {
 function forceYUp(y0, nodeFilter) {
   let nodes;
   let dir = 1;
-  let fOB = -30.0;
-  let fIB = -15.911;
-  const decay = -30;
+  //let fOB = -30.0;
+  let fIB = FENCE_FORCE;
+  const decay = FENCE_DECAY;
   function force(alpha : number) {
     for (const node of nodes) {
       if (!nodeFilter(node)) continue;
@@ -155,7 +160,7 @@ function forceYUp(y0, nodeFilter) {
 
       if (dy > 0 && false) {
         //node.vy += -100 * alpha;
-        node.vy += fOB * alpha;
+        //node.vy += fOB * alpha;
       } else {
         //node.vy += -1;
         let a = fIB * Math.exp(-dy / decay) * alpha
@@ -171,18 +176,18 @@ function forceYUp(y0, nodeFilter) {
 function forceYDown(y0, nodeFilter) {
   let nodes;
   let dir = -1;
-  let fOB = -20.0;
-  let fIB = -9.911;
-  const decay = -50;
+  //let fOB = -20.0;
+  let fIB = FENCE_FORCE;
+  const decay = FENCE_DECAY;
   function force(alpha : number) {
     for (const node of nodes) {
       if (!nodeFilter(node)) continue;
 
       const dy = (node.y - y0) * dir; // Positive when below line
 
-      if (dy > 0) {
+      if (dy > 0 && false) {
         //node.vy += -100 * alpha;
-        node.vy += fOB * alpha * dir;
+        //node.vy += fOB * alpha * dir;
       } else {
         //node.vy += -1;
         node.vy += fIB * Math.exp(-dy / decay) * alpha * dir;
@@ -229,8 +234,10 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .alphaDecay(.01)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
       .force("center", d3.forceX(0).strength(fCENTER))
-      .force("f1", forceYUp(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
-      .force("f2", forceYDown(BLOCKED_SETPOINT, d => d.task.isBlocked))
+      .force('centerUpperBound', forceYDown(COMPLETED_TASK_SETPOINT, d => d.status != 'complete'))
+      .force('centerLowerBound', forceYUp(BLOCKED_SETPOINT, d => !d.task.isBlocked))
+      .force("complete", forceYUp(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
+      .force("blocked", forceYDown(BLOCKED_SETPOINT, d => d.task.isBlocked))
       .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
       .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
