@@ -26,10 +26,6 @@ type Node = d3.SimulationNodeDatum & {
 function importData(tasks: Record<string, Task>) : Node[] {
   tasks = calculate(tasks);
   const nodes : Node[] = Object.values(tasks).map( t => {
-
-    //t.isBlocked = true;
-
-
     return {
       id: t.id,
       status: t.status,
@@ -39,7 +35,6 @@ function importData(tasks: Record<string, Task>) : Node[] {
       hovered: false,
       task: t
     }
-
   });
 
   return nodes;
@@ -54,8 +49,6 @@ function exportData(nodes : Node[]) : Record<string, Task> {
 function calculate(tasks : Record<string, Task>) {
   Object.values(tasks).forEach( t => {
     t.isBlocked = false;
-    //t.isBlocked = true;
-    //t.isBlocked = false;
 
     for (const id of t.dependsOn) {
       if (tasks[id].status != 'complete') { t.isBlocked = true; break }
@@ -69,7 +62,6 @@ function calculate(tasks : Record<string, Task>) {
 function recalculate(nodes : Node[]) : Node[] {
   // export nodes to data structure
   let tasks = exportData(nodes);
-
 
   let new_tasks = calculate(tasks);
 
