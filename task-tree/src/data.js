@@ -26,9 +26,10 @@ const testDict = {
 ,"c": { "title": "Renew license b", "description": "", "priority": 4, "id": "c", "dependsOn": ['a'], "status":"not started"}
 ,"d": { "title": "Renew license a", "description": "", "priority": 2, "id": "d", "dependsOn": ['c'], "status":"not started", "isExternal": true}
 ,"e": { "title": "Renew license a", "description": "", "priority": 2, "id": "e", "dependsOn": ['d'], "status":"not started"}
-,"f": { "title": "Renew license a", "description": "", "priority": 2, "id": "f", "dependsOn": ['d'], "status":"not started"}
+,"f": { "title": "Renew license f", "description": "", "priority": 2, "id": "f", "dependsOn": ['d'], "status":"not started"}
 ,"g": { "title": "Renew license a", "description": "", "priority": 2, "id": "g", "dependsOn": [], "status":"not started"}
 ,"h": { "title": "Renew license a", "description": "", "priority": 2, "id": "h", "dependsOn": [], "status":"not started"}
+,"j": { "title": "Renew license a", "description": "", "priority": 2, "id": "j", "dependsOn": ['e'], "status":"not started"}
 }
 
 export {testData, testDict};
