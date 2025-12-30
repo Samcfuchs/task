@@ -11,7 +11,8 @@ type Task = {
   priority: number,
   dependsOn: string[],
   status: string,
-  isBlocked: boolean
+  isBlocked: boolean,
+  isExternal: boolean
 }
 
 type Node = d3.SimulationNodeDatum & {
@@ -67,7 +68,16 @@ function recalculate(nodes : Node[]) : Node[] {
   // export nodes to data structure
   let tasks = exportData(nodes);
 
-  tasks = calculate(tasks);
+
+  let new_tasks = calculate(tasks);
+
+  Object.keys(new_tasks).forEach(k => {
+    if (new_tasks[k] != tasks[k]) {
+
+    }
+  })
+
+  //tasks = calculate(tasks);
 
   return importData(tasks);
 
@@ -105,19 +115,26 @@ const BLOCKED_SETPOINT = 250;
 
 
 const FORCE_SCALAR = .05;
-const GRAVITY = .0100;
-const CHARGE = -0.999;
-const LINK = .1105;
+const fGRAVITY = .0500;
+const fCHARGE = -1.999;
+const fLINK = .0105;
 const fCENTER = 0.0010;
 const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const RAD_SCALAR = 6;
 
+const BLOCKER_SIZE = 25;
+
 function colorNode( node ) {
   //console.log(node)
+  //if (node.task.isExternal) { return '#39f'}
   if (node.status == 'complete') { return '#9f9' }
   if (node.task.isBlocked) { return '#999' }
   return '#fff';
+}
+
+function constrain (n : number, min : number, max : number) : number {
+  return Math.min(Math.max(n,min), max)
 }
 
 function forceYUp(y0, nodeFilter) {
@@ -132,12 +149,13 @@ function forceYUp(y0, nodeFilter) {
 
       const dy = (node.y - y0) * dir; // Positive when below line
 
-      if (dy > 0) {
+      if (dy > 0 && false) {
         //node.vy += -100 * alpha;
         node.vy += fOB * alpha;
       } else {
         //node.vy += -1;
-        node.vy += fIB * Math.exp(-dy / decay) * alpha
+        let a = fIB * Math.exp(-dy / decay) * alpha
+        node.vy += constrain(a, -10, 10)
       }
     }
   }
@@ -197,19 +215,20 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
     const viz_regions = svg.append('g');
     const viz_lines = svg.append('g');
+    let tooltip = d3.select('div#tooltip')
     
     let { nodes, links } = buildSimData(tasks);
 
     const simulation = d3.forceSimulation<Node>(nodes)
       .alphaTarget(.1)
       .alphaDecay(.01)
-      .force("charge", d3.forceManyBody().strength(CHARGE))
-      //.force("center", d3.forceCenter(0, 200).strength(fCENTER))
+      .force("charge", d3.forceManyBody().strength(fCHARGE))
+      .force("center", d3.forceX(0).strength(fCENTER))
       .force("f1", forceYUp(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
       .force("f2", forceYDown(BLOCKED_SETPOINT, d => d.task.isBlocked))
-      .force("link", d3.forceLink(links).id(d => d.id).strength(LINK))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.priority))
-      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(GRAVITY))
+      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
+      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
     
     const link = svg.append('g')
       .attr('stroke', '#333')
@@ -252,13 +271,22 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .attr('opacity', 0)
     
     const node = svg.append('g')
-      .attr('stroke','purple')
+      .attr('stroke','#555')
       .attr('stroke-width', 2)
-    .selectAll('circle')
+    .selectAll('g')
     .data(nodes)
-    .join('circle')
+    //.join('g').append('rect')
+    .join('g').append('rect')
       .attr('r', d => RAD_SCALAR*d.priority)
-      .attr('fill', colorNode);
+      .attr('fill', colorNode)
+      .attr('width', BLOCKER_SIZE)
+      .attr('height', BLOCKER_SIZE)
+      .attr('rx', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
+      .attr('ry', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
+      .on('mouseover', tooltipUpdate)
+      .on("mousemove", () => tooltip.style("top", (event.offsetY+50)+"px").style("left",(event.offsetX+30)+"px"))
+      .on('mouseout', () => tooltip.style('visibility', 'hidden'))
+
     
     nodes.forEach(d => {d.x = 0; d.y = 200; })
     
@@ -273,6 +301,8 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       node
         .attr('cx', d => d.x)
         .attr('cy', d => d.y)
+        .attr('x', d => d.x - BLOCKER_SIZE / 2)
+        .attr('y', d => d.y - BLOCKER_SIZE / 2)
         .attr('fill', colorNode);
 
       link
@@ -283,6 +313,21 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
     });
 
 
+    function tooltipUpdate(event, d) {
+      let targetNode = event.target;
+      console.log(targetNode)
+      console.log(d)
+
+      tooltip.style('visibility', 'visible')
+
+      tooltip.select('#title').text(d.task.title)
+      tooltip.select('#status').text(d.task.status)
+      tooltip.select('#description').text(d.task.description)
+
+      tooltip.style('left', event.x)
+      tooltip.style('top', event.x)
+
+    }
 
     
     // Set the position attributes of links and nodes each time the simulation ticks.
@@ -330,8 +375,11 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
       if (!event.active) simulation.alphaTarget(0.1);
 
-      event.subject.fx = null;
-      event.subject.fy = null;
+
+      if (!targetNode.task.isExternal) {
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
 
       if (targetNode.y < COMPLETED_TASK_SETPOINT) {
         targetNode.status = 'complete';
@@ -441,6 +489,11 @@ function App() {
     <>
       <div>
         <Sim tasks={data} />
+        <div id='tooltip'>
+          <h2 id='title'></h2>
+          <h4 id='status'></h4>
+          <p id='description'></p>
+        </div>
       </div>
       <TaskBuilder callback={console.log}/>
       <div onClick={addTask}>Add a bubble</div>
