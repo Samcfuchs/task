@@ -10,33 +10,74 @@ type Task = {
   description:string,
   priority: number,
   dependsOn: string[],
-  status: string
+  status: string,
+  isBlocked: boolean
 }
 
 type Node = d3.SimulationNodeDatum & {
   id: string,
-  group?: number
+  group?: number,
+  task: Task
 }
 
-function buildSimData(tasks: { string:Task}) {
+/* Import data from an existing object */
+function importData(tasks: Record<string, Task>) : Node[] {
+  tasks = calculate(tasks);
   const nodes : Node[] = Object.values(tasks).map( t => {
 
-    let isBlocked = false;
+    //t.isBlocked = true;
 
-    for (const id of t.dependsOn) {
-      if (tasks[id].status != 'complete') { isBlocked = true; break }
-    }
 
     return {
-      id: t.id, 
+      id: t.id,
       status: t.status,
       priority: t.priority,
-      blocked: isBlocked
-    } 
+      //isBlocked: true,
+      //blocked: true,
+      task: t
+    }
+
+  });
+
+  return nodes;
+}
+
+function exportData(nodes : Node[]) : Record<string, Task> {
+  const tasks : Record<string, Task> = {};
+  nodes.forEach(d => tasks[d.id] = d.task);
+  return tasks
+}
+
+function calculate(tasks : Record<string, Task>) {
+  Object.values(tasks).forEach( t => {
+    t.isBlocked = false;
+    //t.isBlocked = true;
+    //t.isBlocked = false;
+
+    for (const id of t.dependsOn) {
+      if (tasks[id].status != 'complete') { t.isBlocked = true; break }
+    }
+
   })
+
+  return tasks;
+}
+
+function recalculate(nodes : Node[]) : Node[] {
+  // export nodes to data structure
+  let tasks = exportData(nodes);
+
+  tasks = calculate(tasks);
+
+  return importData(tasks);
+
+}
+
+function buildSimData(tasks: Record<string, Task>) {
+  const nodes = recalculate(importData(tasks))
   const links = Object.values(tasks).flatMap( t => t.dependsOn.map(c => ({source: c, target: t.id}) ))
 
-  console.log(links)
+  //console.log(links)
 
   return { nodes, links }
 
@@ -58,31 +99,86 @@ function getRandomTask() {
 
 }
 
-const COMPLETED_TASK_SETPOINT = -100;
-const GRAVITY_SETPOINT = 150;
-const UNBLOCKED_SETPOINT = 0;
+const COMPLETED_TASK_SETPOINT = 150;
+const GRAVITY_SETPOINT = 200;
+const BLOCKED_SETPOINT = 250;
 
 
 const FORCE_SCALAR = .05;
-const GRAVITY = .4 * FORCE_SCALAR;
-const CHARGE = -200 * FORCE_SCALAR;
-const LINK = 3 * FORCE_SCALAR;
+const GRAVITY = .0100;
+const CHARGE = -0.999;
+const LINK = .1105;
+const fCENTER = 0.0010;
 const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const RAD_SCALAR = 6;
 
 function colorNode( node ) {
+  //console.log(node)
   if (node.status == 'complete') { return '#9f9' }
-  if (node.blocked) { return '#999' }
+  if (node.task.isBlocked) { return '#999' }
   return '#fff';
 }
 
-function Sim({ tasks } : { tasks: { id : Task } }) {
+function forceYUp(y0, nodeFilter) {
+  let nodes;
+  let dir = 1;
+  let fOB = -30.0;
+  let fIB = -15.911;
+  const decay = -30;
+  function force(alpha : number) {
+    for (const node of nodes) {
+      if (!nodeFilter(node)) continue;
+
+      const dy = (node.y - y0) * dir; // Positive when below line
+
+      if (dy > 0) {
+        //node.vy += -100 * alpha;
+        node.vy += fOB * alpha;
+      } else {
+        //node.vy += -1;
+        node.vy += fIB * Math.exp(-dy / decay) * alpha
+      }
+    }
+  }
+  force.initialize = n => {nodes = n}
+
+  return force;
+}
+
+function forceYDown(y0, nodeFilter) {
+  let nodes;
+  let dir = -1;
+  let fOB = -20.0;
+  let fIB = -9.911;
+  const decay = -50;
+  function force(alpha : number) {
+    for (const node of nodes) {
+      if (!nodeFilter(node)) continue;
+
+      const dy = (node.y - y0) * dir; // Positive when below line
+
+      if (dy > 0) {
+        //node.vy += -100 * alpha;
+        node.vy += fOB * alpha * dir;
+      } else {
+        //node.vy += -1;
+        node.vy += fIB * Math.exp(-dy / decay) * alpha * dir;
+      }
+    }
+  }
+
+  force.initialize = n => {nodes = n}
+
+  return force;
+}
+
+function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const width = 400;
-  const height = 400;
+  let width = 600;
+  let height = 400;
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -91,40 +187,70 @@ function Sim({ tasks } : { tasks: { id : Task } }) {
     svg.selectAll("*").remove()
 
     svg
-      .attr('width', width)
       .attr('height', height)
-      .attr('viewBox', [-width/2, -height/2, width, height])
+      .attr('width', width)
+      .attr('viewBox', [-width/2, 0, width, height])
       .attr('style', 'display: block; background-color: #eee;')
     
-    //const nodes : Node[] = tasks.map( t => ({ id: t.id }) )
-    //const links = tasks.flatMap( t => t.children.map(c => ({source: t.id, target:c}) ))
+    width = +svg.attr('width');
+    height = +svg.attr('height');
 
-    const { nodes, links } = buildSimData(tasks);
+    const viz_regions = svg.append('g');
+    const viz_lines = svg.append('g');
+    
+    let { nodes, links } = buildSimData(tasks);
 
     const simulation = d3.forceSimulation<Node>(nodes)
-      //.alphaTarget(.1)
+      .alphaTarget(.1)
       .alphaDecay(.01)
       .force("charge", d3.forceManyBody().strength(CHARGE))
-      .force("center", d3.forceCenter().strength(0))
+      //.force("center", d3.forceCenter(0, 200).strength(fCENTER))
+      .force("f1", forceYUp(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
+      .force("f2", forceYDown(BLOCKED_SETPOINT, d => d.task.isBlocked))
       .force("link", d3.forceLink(links).id(d => d.id).strength(LINK))
       .force("collide", d3.forceCollide(d => RAD_SCALAR*d.priority))
-
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(GRAVITY))
-      .force("liftCompleted", 
-        d3.forceY(COMPLETED_TASK_SETPOINT)
-        .strength(d => d.status == "complete" ? COMPLETED_TASK : 0))
-      .force("liftAvailable", 
-        d3.forceY(UNBLOCKED_SETPOINT)
-        .strength(d => d.blocked ? 0 : COMPLETED_TASK))
     
-    const lines = svg.append('g');
     const link = svg.append('g')
       .attr('stroke', '#333')
       .attr('stroke-width', '2')
+
     .selectAll('line')
     .data(links)
     .join('line')
 
+    viz_lines.append('line')
+      .attr('stroke', '#292')
+      .attr('stroke-width', '2')
+      .attr('x1', -width/2)
+      .attr('x2',  width/2)
+      .attr('y1', COMPLETED_TASK_SETPOINT)
+      .attr('y2',  COMPLETED_TASK_SETPOINT)
+    
+    viz_lines.append('line')
+      .attr('stroke', '#555')
+      .attr('stroke-width', '2')
+      .attr('x1', -width/2)
+      .attr('x2',  width/2)
+      .attr('y1', BLOCKED_SETPOINT)
+      .attr('y2',  BLOCKED_SETPOINT)
+      
+    const completedTaskRegion = viz_regions.append('rect')
+      .attr('x', -width/2)
+      .attr('width', width)
+      .attr('y', 0)
+      .attr('height', COMPLETED_TASK_SETPOINT)
+      .attr('fill', '#292')
+      .attr('opacity', 0)
+
+    const mainTaskRegion = viz_regions.append('rect')
+      .attr('x', -width/2)
+      .attr('width', width)
+      .attr('y', COMPLETED_TASK_SETPOINT)
+      .attr('height', BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT)
+      .attr('fill', '#fff')
+      .attr('opacity', 0)
+    
     const node = svg.append('g')
       .attr('stroke','purple')
       .attr('stroke-width', 2)
@@ -132,31 +258,22 @@ function Sim({ tasks } : { tasks: { id : Task } }) {
     .data(nodes)
     .join('circle')
       .attr('r', d => RAD_SCALAR*d.priority)
-      .attr('fill', d => colorNode(d));
+      .attr('fill', colorNode);
     
-    lines.append('line')
-        .attr('stroke', '#292')
-        .attr('stroke-width', '2')
-        .attr('x1', -width/2)
-        .attr('x2',  width/2)
-        .attr('y1', COMPLETED_TASK_SETPOINT)
-        .attr('y2',  COMPLETED_TASK_SETPOINT)
-    
-    lines.append('line')
-        .attr('stroke', '#555')
-        .attr('stroke-width', '2')
-        .attr('x1', -width/2)
-        .attr('x2',  width/2)
-        .attr('y1', GRAVITY_SETPOINT)
-        .attr('y2',  GRAVITY_SETPOINT)
-
+    nodes.forEach(d => {d.x = 0; d.y = 200; })
     
     node.append('title').text(d => d.title);
+    // Add a drag behavior.
+    node.call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
 
     simulation.on('tick', () => {
       node
         .attr('cx', d => d.x)
-        .attr('cy', d => d.y);
+        .attr('cy', d => d.y)
+        .attr('fill', colorNode);
 
       link
         .attr('x1', d => d.source.x)
@@ -164,13 +281,82 @@ function Sim({ tasks } : { tasks: { id : Task } }) {
         .attr('y1', d => d.source.y)
         .attr('y2', d => d.target.y)
     });
+
+
+
+    
+    // Set the position attributes of links and nodes each time the simulation ticks.
+    // Reheat the simulation when drag starts, and fix the subject position.
+    function dragstarted(event) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      event.subject.fx = event.subject.x;
+      event.subject.fy = event.subject.y;
+    }
+
+    // Update the subject (dragged node) position during drag.
+    function dragged(event) {
+      let targetNode = event.subject;
+
+      event.subject.fx = event.x;
+      event.subject.fy = event.y;
+
+      if (targetNode.task.status != 'complete') {
+
+        if (event.y < COMPLETED_TASK_SETPOINT) {
+          completedTaskRegion.attr('opacity', .2)
+
+        } else {
+          completedTaskRegion.attr('opacity', 0)
+        }
+      }
+
+      if (targetNode.task.status == 'complete') {
+        if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
+          mainTaskRegion.attr('opacity', .99)
+
+        } else {
+          mainTaskRegion.attr('opacity', 0)
+        }
+
+      }
+
+    }
+
+    // Restore the target alpha so the simulation cools after dragging ends.
+    // Unfix the subject position now that it’s no longer being dragged.
+    function dragended(event) {
+
+      let targetNode = event.subject;
+
+      if (!event.active) simulation.alphaTarget(0.1);
+
+      event.subject.fx = null;
+      event.subject.fy = null;
+
+      if (targetNode.y < COMPLETED_TASK_SETPOINT) {
+        targetNode.status = 'complete';
+        tasks[targetNode.id].status = 'complete';
+
+      }
+      if (targetNode.y > COMPLETED_TASK_SETPOINT) {
+        targetNode.status = 'not started';
+        tasks[targetNode.id].status = 'not started';
+
+      }
+
+      completedTaskRegion.attr('opacity', 0)
+      mainTaskRegion.attr('opacity', 0)
+      nodes = recalculate(nodes);
+
+    }
+
       
 
   });
 
 
   return (
-    <div style={{border:'1px dotted blue'}}>
+    <div style={{border:'0px dotted blue'}}>
     <svg ref={svgRef} >
       <g fill='red'>
         {Object.values(tasks).map((d,i) => (<circle key={d.id} cx={d3.randomInt(100)()} cy={d3.randomInt(100)()} r={5}/>) ) }
@@ -253,15 +439,10 @@ function App() {
 
   return (
     <>
-      <TaskBuilder callback={console.log}/>
       <div>
         <Sim tasks={data} />
       </div>
-      <h1>Vite + React</h1>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-
+      <TaskBuilder callback={console.log}/>
       <div onClick={addTask}>Add a bubble</div>
 
     </>
