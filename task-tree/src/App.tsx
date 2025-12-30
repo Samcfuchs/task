@@ -242,6 +242,14 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
       .attr('height', BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT)
       .attr('fill', '#fff')
       .attr('opacity', 0)
+
+    const blockedTaskRegion = viz_lines.append('rect')
+      .attr('x', -width/2)
+      .attr('width', width)
+      .attr('y', BLOCKED_SETPOINT)
+      .attr('height', height - BLOCKED_SETPOINT)
+      .attr('fill', '#888')
+      .attr('opacity', 0);
     
     const gradients = defs.selectAll('linearGradient')
       .data(links, d => d.id)
@@ -351,8 +359,9 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
     function dragged(event) {
       let targetNode = event.subject;
 
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
+      //constrain(d.x, -width/2, width/2)
+      event.subject.fx = constrain(event.x, -width/2, width/2)
+      event.subject.fy = constrain(event.y, 0, height);
 
       if (targetNode.task.status != 'complete') {
 
@@ -372,6 +381,14 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
           mainTaskRegion.attr('opacity', 0)
         }
 
+      }
+
+      if (!targetNode.task.isBlocked) {
+        if (event.y > BLOCKED_SETPOINT) {
+          blockedTaskRegion.attr('opacity', .5)
+        } else {
+          blockedTaskRegion.attr('opacity', 0)
+        }
       }
 
     }
@@ -401,8 +418,11 @@ function Sim({ tasks } : { tasks: Record<string, Task> }) {
 
       }
 
+
+
       completedTaskRegion.attr('opacity', 0)
       mainTaskRegion.attr('opacity', 0)
+      blockedTaskRegion.attr('opacity', 0)
       nodes = recalculate(nodes);
 
     }

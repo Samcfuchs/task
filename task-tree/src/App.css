@@ -21,9 +21,8 @@ body {
   visibility: hidden;
 }
 
-h2 {
+h2, h4 {
   margin: 0;
-  font-size: 18px;
   text-align: left;
 
 }
