@@ -17,6 +17,7 @@ body {
   padding: 10px;
 
   background-color: #fffe;
+  color: #333;
   pointer-events: none;
   visibility: hidden;
 }

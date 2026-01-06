@@ -22,7 +22,7 @@ const fLINK = .1505;
 const fCENTER = 0.0010;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
-const RAD_SCALAR = 8;
+const RAD_SCALAR = 15;
 
 const BLOCKER_SIZE = 25;
 
@@ -158,24 +158,15 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
 
 }
 
-function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEvent) => void; }) {
+function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEvent) => void, selectTask: (id: string) => void}) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
-  const nodeRef = useRef<Map<string, Node>>(new Map());
-  const linkRef = useRef<Link[]>([]);
   const simDataRef = useRef<{nodes: Node[], links: Link[]}>({nodes: [], links: []});
-
-
-  const [snapshot, setTasks] = useState<Record<string, Task>>(tasks)
-  
-  const solvedTasks = useMemo(
-    () => calculate(snapshot),
-    [snapshot]
-  )
+  const solvedTasks = useMemo( () => calculate(tasks), [tasks])
 
   let width = 500;
-  let height = 400;
+  let height = 500;
 
 
   useEffect(() => { // Initial effect
@@ -214,27 +205,27 @@ function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: Commi
       .alphaTarget(.1)
       .alphaDecay(.01)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
+      .force("collide", d3.forceCollide(d => RAD_SCALAR)) // TODO: add priority
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
       .force("center", d3.forceX(0).strength(fCENTER))
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
 
-      //.force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
-      //.force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      //.force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
-      //.force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
+      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
+      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
+      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
+      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
 
     simRef.current = sim;
+
+    const link = svg.append('g')
+      .attr('id', 'link')
+      .attr('stroke-width','2');
 
     const node = svg.append('g')
       .attr('id', 'node')
       .attr('stroke-width','2')
       .attr('stroke','#555');
-
-    const link = svg.append('g')
-      .attr('id', 'link')
-      .attr('stroke-width','2');
 
 
     function makeRegion(y : number, height : number, fill : string) {
@@ -273,52 +264,22 @@ function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: Commi
     if (!simRef.current) return;
 
     const svg = d3.select(svgRef.current)
-    //svg.selectAll("*").remove()
 
-    //width = +svg.attr('width');
-    //height = +svg.attr('height');
+    width = +svg.attr('width');
+    height = +svg.attr('height');
 
     const tooltip = d3.select('div#tooltip')
     const viz_regions = svg.select('g#regions');
     const defs = svg.select('defs');
     const simulation = simRef.current;
     
-    
-    //const { nodes, links } = buildSimData(tasks);
+    //simDataRef.current = buildSimData(tasks, simDataRef.current)
+    simDataRef.current = buildSimData(solvedTasks, simDataRef.current)
+    const nodes = simDataRef.current.nodes;
+    const links = simDataRef.current.links;
 
-    //simulation.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK)) 
-    /*
-    const simulation = d3.forceSimulation<Node>(nodes)
-      .alphaTarget(.1)
-      .alphaDecay(.01)
-      .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
-      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
-
-      .force("center", d3.forceX(0).strength(fCENTER))
-      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
-
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
-      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
-    */
-
-    
-    console.debug("old simdataref", simDataRef.current.nodes)
-
-    
-    const simData = buildSimData(tasks, simDataRef.current)
-    let nodes = simData.nodes;
-    let links = simData.links;
-
-    simDataRef.current = {nodes: simData.nodes, links: simData.links}
-
-
-    console.log("Update tasks:", tasks);
-    console.log("Update nodes:", nodes);
-    console.log("Update links:", links);
-    
+    simulation.nodes(nodes);
+    simulation.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
     const node = svg.select('g#node')
       .selectAll('rect')
@@ -340,7 +301,6 @@ function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: Commi
       );
 
 
-    simulation.nodes(nodes);
     //.exit().remove();
         //.on('mouseover', tooltipUpdate)
         //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
@@ -532,47 +492,15 @@ function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: Commi
   )
 }
 
-function Test() {
-  const testRef = useRef(null);
-  useEffect(() => {
-    const svg = d3.select(testRef.current);
+function Inspect({tasks, taskID}) {
 
-    svg.attr('height', 100).attr('width',100).attr('fill','#fff').style('border', '1px solid red');
-
-    svg.append('circle').attr('fill', '#f00').attr('r', 10).attr('cx', 20).attr('cy',20);
-
-    let data = [{}, {}, {}, {}];
-
-    const sim = d3.forceSimulation()
-      .force('charge', d3.forceManyBody().strength(0.500))
-      .force('center', d3.forceCenter(50,50))
-    
-    const node = svg.append('g')
-      .selectAll('circle')
-      .data(data)
-      .join(
-        enter => enter.append('circle')
-          .attr('fill','#fff')
-          .attr('r', 10),
-        update => update,
-        exit => exit.remove()
-      )
-    
-    //sim.nodes(data);
-    
-    sim.on('tick', () => {
-      node
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y)
-
-    })
-  })
   return (
-    <>
-      <svg ref={testRef}></svg>
-    </>
+    <div id='inspect-pane'>
+      <h1>{tasks[taskID]}</h1>
+      
+      
+    </div>
   )
-
 }
 
 function App() {
@@ -582,7 +510,8 @@ function App() {
   const testData = {}
   for (const key of keysToKeep) { testData[key] = testDict[key] }
 
-  const [tasks, setTasks] = useState<TaskMap>(testData)
+  const [tasks, setTasks] = useState<TaskMap>(testDict)
+  const [selectedTaskID, setSelectedTaskID] = useState<string>();
 
   
   //console.log("Initial task import:", tasks)
@@ -612,12 +541,8 @@ function App() {
   return (
     <>
       <div>
-        <SimGood tasks={tasks} onCommit={handleCommit}/>
-        <div id='tooltip'>
-          <h2 id='title'></h2>
-          <h4 id='status'></h4>
-          <p id='description'></p>
-        </div>
+        <Sim tasks={tasks} onCommit={handleCommit} selectTask={setSelectedTaskID}/>
+        <Inspect tasks={tasks} taskID={selectedTaskID}/>
       </div>
 
     </>
