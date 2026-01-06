@@ -23,10 +23,35 @@ const fCENTER = 0.0010;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const RAD_SCALAR = 15;
-
 const BLOCKER_SIZE = 25;
 
-const linkGradient = [{offset: "10%", color: '#9f9'}, {offset: "90%", color: "#000"}];
+const COLORS = {
+  node: {
+    stroke: '#000',
+    strokeSelected: '#999',
+    fillComplete: '#9f9',
+    fillBlocked: '#ccc',
+    fillAvailable: '#fff',
+  },
+
+  border: {
+    complete: '#afa',
+    blocked: '#eee'
+  },
+
+  edge: {
+    start: '#9f9',
+    end: '#000'
+  },
+
+  region: {
+    complete: '#9f9',
+    available: '#999',
+    blocked: '#666',
+  }
+}
+
+const linkGradient = [{offset: "10%", color: COLORS.edge.start}, {offset: "90%", color: COLORS.edge.end}];
 
 type Task = {
   title:string,
@@ -60,9 +85,9 @@ type CommitEvent =
 function colorNode( node : Node ) : string {
   //console.log(node)
   //if (node.task.isExternal) { return '#39f'}
-  if (node.task.status == 'complete') { return '#9f9' }
-  if (node.task.isBlocked) { return '#999' }
-  return '#fff';
+  if (node.task.status == 'complete') { return COLORS.node.fillComplete }
+  if (node.task.isBlocked) { return COLORS.node.fillBlocked }
+  return COLORS.node.fillAvailable;
 }
 
 function nodeGravitySetpoint(node: Node) : number {
@@ -205,8 +230,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       return l;
     }
 
-    makeLine(COMPLETED_TASK_SETPOINT, '#292');
-    makeLine(BLOCKED_SETPOINT, '#555');
+    makeLine(COMPLETED_TASK_SETPOINT, COLORS.border.complete);
+    makeLine(BLOCKED_SETPOINT, COLORS.border.blocked);
 
     const sim = d3.forceSimulation<Node>()
       .alphaTarget(.1)
@@ -232,7 +257,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const node = svg.append('g')
       .attr('id', 'node')
       .attr('stroke-width','2')
-      .attr('stroke','#555');
+      .attr('stroke', COLORS.node.stroke);
 
 
     function makeRegion(y : number, height : number, fill : string) {
@@ -247,9 +272,9 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       return region;
     }
 
-    const completedTaskRegion = makeRegion(0, COMPLETED_TASK_SETPOINT, '#292').attr('id','complete');
-    const mainTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT, '#fff').attr('id', 'main');
-    const blockedTaskRegion = makeRegion(BLOCKED_SETPOINT, height - BLOCKED_SETPOINT, '#888').attr('id','blocked');
+    const completedTaskRegion = makeRegion(0, COMPLETED_TASK_SETPOINT, COLORS.region.complete).attr('id','complete');
+    const mainTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT, COLORS.region.available).attr('id', 'main');
+    const blockedTaskRegion = makeRegion(BLOCKED_SETPOINT, height - BLOCKED_SETPOINT, COLORS.region.blocked).attr('id','blocked');
 
   }, [width, height]);
 
@@ -349,7 +374,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       //alert('Selected node');
       node.attr('stroke', null)
 
-      d3.select(this).attr('stroke', '#000')
+      d3.select(this).attr('stroke', COLORS.node.strokeSelected)
       selectTask(d.task.id)
     }
 
@@ -412,7 +437,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       if (targetNode.task.status == 'complete') {
         if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
-          mainTaskRegion.attr('opacity', .99)
+          mainTaskRegion.attr('opacity', .2)
 
         } else {
           mainTaskRegion.attr('opacity', 0)
@@ -422,7 +447,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       if (!targetNode.task.isBlocked) {
         if (event.y > BLOCKED_SETPOINT) {
-          blockedTaskRegion.attr('opacity', .5)
+          blockedTaskRegion.attr('opacity', .2)
         } else {
           blockedTaskRegion.attr('opacity', 0)
         }
@@ -487,7 +512,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
 function Inspect({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
 
-  if (!tasks[taskID]) return (<div id='inspect-pane'></div>)
+  if (!tasks[taskID]) return (<></>)
     
 
   return (
