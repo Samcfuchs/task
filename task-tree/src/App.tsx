@@ -65,6 +65,12 @@ function colorNode( node : Node ) : string {
   return '#fff';
 }
 
+function nodeGravitySetpoint(node: Node) : number {
+  if (node.task.status == 'complete') { return COMPLETED_TASK_SETPOINT; }
+  if (node.task.isBlocked) { return 500; }
+  return GRAVITY_SETPOINT;
+}
+
 /* Constrain a number between min and max */
 function constrain (n : number, min : number, max : number) : number {
   return Math.min(Math.max(n,min), max)
@@ -158,7 +164,8 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
 
 }
 
-function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEvent) => void, selectTask: (id: string) => void}) {
+function Sim({ tasks, onCommit, selectTask, hoverTask } : 
+  { tasks: TaskMap, onCommit: (event: CommitEvent) => void, selectTask: (id: string) => void, hoverTask: (id: string) => void}) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -209,7 +216,7 @@ function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEve
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
       .force("center", d3.forceX(0).strength(fCENTER))
-      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
+      .force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
 
       .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
       .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
@@ -299,6 +306,11 @@ function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEve
         update => update,//.attr('width', 50),
         exit => { exit.remove(); }
       );
+    
+    node.on('click', selectNode);
+    node.on('mouseover', hoverNode);
+    node.on('mousemove', (event, d) => tooltip.style('top', (event.offsetY+60)+'px').style('left', (event.x+10)+'px'))
+    node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
 
 
     //.exit().remove();
@@ -335,16 +347,15 @@ function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEve
 
     function selectNode(event, d) {
       //alert('Selected node');
-      clearSelection(event, d);
-      tooltipUpdate(event, d);
-
-      let targetNode = event.target;
+      node.attr('stroke', null)
 
       d3.select(this).attr('stroke', '#000')
+      selectTask(d.task.id)
     }
 
-    function clearSelection(event, d) {
-      node.attr('stroke', null)
+    function hoverNode(event, d) {
+      tooltip.style('visibility','visible');
+      hoverTask(d.task.id);
     }
     
 
@@ -368,24 +379,6 @@ function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEve
         .attr('y2', d => d.target.y)
     });
 
-
-    function tooltipUpdate(event, d) {
-      //let targetNode = event.target;
-      //console.log(targetNode)
-      //console.log(d)
-
-      d.hovered = true;
-      tooltip.style('visibility', 'visible')
-
-      tooltip.select('#title').text(d.task.title)
-      tooltip.select('#status').text(d.task.status)
-      tooltip.select('#description').text(d.task.description)
-
-      tooltip.style('left', event.x)
-      tooltip.style('top', event.x)
-
-
-    }
 
     // Set the position attributes of links and nodes each time the simulation ticks.
     // Reheat the simulation when drag starts, and fix the subject position.
@@ -492,26 +485,38 @@ function Sim({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEve
   )
 }
 
-function Inspect({tasks, taskID}) {
+function Inspect({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
+
+  if (!tasks[taskID]) return (<div id='inspect-pane'></div>)
+    
 
   return (
     <div id='inspect-pane'>
-      <h1>{tasks[taskID]}</h1>
+      <h1>{tasks[taskID].title}</h1>
+      <p>{tasks[taskID].description}</p>
       
       
     </div>
   )
 }
 
-function App() {
+function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
 
-  //const [data, setData] = useState(() => testDict)
-  const keysToKeep = ['a','b','c']
-  const testData = {}
-  for (const key of keysToKeep) { testData[key] = testDict[key] }
+  if (!tasks[taskID]) return (<div id='tooltip'></div>)
+    
+
+  return (
+    <div id='tooltip'>
+      <h1>{tasks[taskID].title}</h1>
+    </div>
+  )
+}
+
+function App() {
 
   const [tasks, setTasks] = useState<TaskMap>(testDict)
   const [selectedTaskID, setSelectedTaskID] = useState<string>();
+  const [hoveredTaskID, setHoveredTaskID] = useState<string>();
 
   
   //console.log("Initial task import:", tasks)
@@ -534,15 +539,14 @@ function App() {
       }
     });
 
-
-    //setTasks()
   }
 
   return (
     <>
       <div>
-        <Sim tasks={tasks} onCommit={handleCommit} selectTask={setSelectedTaskID}/>
+        <Sim tasks={tasks} onCommit={handleCommit} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
         <Inspect tasks={tasks} taskID={selectedTaskID}/>
+        <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       </div>
 
     </>
