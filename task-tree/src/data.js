@@ -16,8 +16,8 @@ const testDict = {
  "x0": { "title": "Renew license", "description": "", "priority": 2, "id": "x0", "dependsOn": [], "status":"not started"}
 ,"x1": { "title": "Renew license 1", "description": "", "priority": 2, "id": "x1", "dependsOn": [], "status":"not started"}
 ,"x2": { "title": "Renew license 2", "description": "", "priority": 2, "id": "x2", "dependsOn": [], "status":"not started"}
-,"x2": { "title": "Renew license 3", "description": "", "priority": 2, "id": "x3", "dependsOn": [], "status":"not started"}
-,"x2": { "title": "Renew license 4", "description": "", "priority": 2, "id": "x4", "dependsOn": [], "status":"not started"}
+,"x3": { "title": "Renew license 3", "description": "", "priority": 2, "id": "x3", "dependsOn": [], "status":"not started"}
+,"x4": { "title": "Renew license 4", "description": "", "priority": 2, "id": "x4", "dependsOn": [], "status":"not started"}
 ,"x5": { "title": "Renew license 5", "description": "", "priority": 2, "id": "x5", "dependsOn": [], "status":"not started"}
 ,"x6": { "title": "Renew license 6", "description": "", "priority": 2, "id": "x6", "dependsOn": [], "status":"not started"}
 ,"b": { "title": "Renew license b", "description": "", "priority": 2, "id": "b", "dependsOn": [], "status":"complete"}

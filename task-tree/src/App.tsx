@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
 import {loremIpsum} from 'lorem-ipsum'
-import {testData, testDict} from './data.js';
+import {testDict} from './data.js';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -45,6 +46,9 @@ type Node = d3.SimulationNodeDatum & {
   hovered: boolean
 }
 
+type Link = { source: string, target: string, id: string };
+type TaskMap = Record<string, Task>;
+
 type CommitEvent =
 | { type: 'complete'; id: string }
 | { type: 'block'; id: string, blockerId: string }
@@ -66,26 +70,27 @@ function constrain (n : number, min : number, max : number) : number {
   return Math.min(Math.max(n,min), max)
 }
 
+/** Exert a custom y-force with exponential magnitude */
+function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
+  let nodes : Node[];
+  const dir = direction ? direction : 1;
+  const fIB = FENCE_FORCE;
+  const decay = FENCE_DECAY;
+  function force(alpha : number) {
+    for (const node of nodes) {
+      if (!nodeFilter(node)) continue;
+      if (!node.y) continue;
 
-/* Import data from an existing object */
-function importData(tasks: Record<string, Task>) : Node[] {
-  const nodes : Node[] = Object.values(tasks).map( t => ({
-      id: t.id,
-      task: t,
-      hovered: false,
-      selected: false
-    }));
+      const dy = (node.y - y0) * dir; // Positive when below line
+      const a = fIB * Math.exp(-dy / decay) * alpha * dir;
+      node.vy = constrain(a, -10, 10) + (node.vy ?? 0)
+    }
+  }
 
-  return nodes;
+  force.initialize = (n : Node[]) => {nodes = n};
+
+  return force;
 }
-
-/*
-function exportData(nodes : Node[]) : Record<string, Task> {
-  const tasks : Record<string, Task> = {};
-  nodes.forEach(d => tasks[d.id] = d.task);
-  return tasks
-}
-*/
 
 function calculate(tasks : Record<string, Task>) : Record<string, Task> {
   const next: Record<string, Task> = {}
@@ -109,390 +114,57 @@ function calculate(tasks : Record<string, Task>) : Record<string, Task> {
   return next
 }
 
-/*
-function recalculate(nodes : Node[]) : Node[] {
-  // export nodes to data structure
-  let tasks = exportData(nodes);
+function refactorData(tasks: TaskMap, 
+                      prev: {nodes: Map<string,Node>, links: Link[]} = {nodes: new Map<string, Node>(), links: []}) 
+                      : { nodes : Map<string,Node>, links: Link[]} {
 
-  let new_tasks = calculate(tasks);
+  const newNodes = prev.nodes;
+  let newLinks = prev.links;
 
-  Object.keys(new_tasks).forEach(k => {
-    if (new_tasks[k] != tasks[k]) {
-
+  for (const [id, task] of Object.entries(tasks)) {
+    const node = newNodes.get(id) ?? {
+      id: task.id,
+      task: task,
+      hovered: false,
+      selected: false,
+      x: 0,
+      y: 200,
+      vx: 0,
+      vy: 0
     }
-  })
 
-  //tasks = calculate(tasks);
+    node.task = task;
 
-  return importData(tasks);
-
-}
-*/
-
-function buildSimData(tasks: Record<string, Task>) {
-  const nodes = recalculate(importData(tasks))
-  const links = Object.values(tasks).flatMap( t => t.dependsOn.map(c => ({source: c, target: t.id, id: `${c}-${t.id}`}) ))
-
-  //console.log(links)
-
-  return { nodes, links }
-
-}
-
-/** Exert a custom y-force with exponential magnitude */
-function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
-  let nodes : Node[];
-  let dir = direction ? direction : 1;
-  let fIB = FENCE_FORCE;
-  const decay = FENCE_DECAY;
-  function force(alpha : number) {
-    for (const node of nodes) {
-      if (!nodeFilter(node)) continue;
-
-      const dy = (node.y - y0) * dir; // Positive when below line
-      let a = fIB * Math.exp(-dy / decay) * alpha * dir;
-      node.vy += constrain(a, -10, 10)
-    }
+    newNodes.set(id, node);
   }
 
-  force.initialize = n => {nodes = n}
+  newLinks = Array.from(newNodes.values()).flatMap( t => (t.task.dependsOn ?? []).map(c => ({source: c, target: t.task.id, id: `${c}-${t.task.id}`}) ))
 
-  return force;
-}
-
-function populateScene(svg) {
-
-  const width = svg.attr('width')
-  const height = svg.attr('height')
-  const viz_regions = svg.append('g');
-  const viz_lines = svg.append('g');
-  const defs = svg.append('defs');
-  viz_lines.append('line')
-    .attr('stroke', '#292')
-    .attr('stroke-width', '2')
-    .attr('x1', -width/2)
-    .attr('x2',  width/2)
-    .attr('y1', COMPLETED_TASK_SETPOINT)
-    .attr('y2',  COMPLETED_TASK_SETPOINT)
+  return { nodes: newNodes, links: newLinks }
   
-  viz_lines.append('line')
-    .attr('stroke', '#555')
-    .attr('stroke-width', '2')
-    .attr('x1', -width/2)
-    .attr('x2',  width/2)
-    .attr('y1', BLOCKED_SETPOINT)
-    .attr('y2',  BLOCKED_SETPOINT)
-    
-  const completedTaskRegion = viz_regions.append('rect')
-    .attr('x', -width/2)
-    .attr('width', width)
-    .attr('y', 0)
-    .attr('height', COMPLETED_TASK_SETPOINT)
-    .attr('fill', '#292')
-    .attr('opacity', 0)
 
-  const mainTaskRegion = viz_regions.append('rect')
-    .attr('x', -width/2)
-    .attr('width', width)
-    .attr('y', COMPLETED_TASK_SETPOINT)
-    .attr('height', BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT)
-    .attr('fill', '#fff')
-    .attr('opacity', 0)
-
-  const blockedTaskRegion = viz_lines.append('rect')
-    .attr('x', -width/2)
-    .attr('width', width)
-    .attr('y', BLOCKED_SETPOINT)
-    .attr('height', height - BLOCKED_SETPOINT)
-    .attr('fill', '#888')
-    .attr('opacity', 0);
 }
 
-function Sim({ tasks } : { tasks: Record<string, Task> }) {
-
-  const svgRef = useRef<SVGSVGElement | null>(null);
-
-  let width = 500;
-  let height = 400;
-
-  useEffect(() => {
-    if (!svgRef.current) return;
-
-    const svg = d3.select(svgRef.current)
-    svg.selectAll("*").remove()
-
-    svg
-      .attr('height', height)
-      .attr('width', width)
-      .attr('viewBox', [-width/2, 0, width, height])
-      .attr('style', 'display: block; background-color: #eee;')
-    
-    width = +svg.attr('width');
-    height = +svg.attr('height');
-
-    const viz_regions = svg.append('g');
-    const viz_lines = svg.append('g');
-    const defs = svg.append('defs');
-    let tooltip = d3.select('div#tooltip')
-    
-    let { nodes, links } = buildSimData(tasks);
-
-    const simulation = d3.forceSimulation<Node>(nodes)
-      .alphaTarget(.1)
-      .alphaDecay(.01)
-      .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
-      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
-
-      .force("center", d3.forceX(0).strength(fCENTER))
-      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
-
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.status != 'complete', -1))
-      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
-
-    
-    const link = svg.append('g')
-      //.attr('stroke', '#333')
-      .attr('stroke-width', '2')
-      .selectAll('line')
-      .data(links, d => d.id)
-      .join('line')
-      .attr('stroke', d=>`url(#grad-${d.id})`)
-
-    viz_lines.append('line')
-      .attr('stroke', '#292')
-      .attr('stroke-width', '2')
-      .attr('x1', -width/2)
-      .attr('x2',  width/2)
-      .attr('y1', COMPLETED_TASK_SETPOINT)
-      .attr('y2',  COMPLETED_TASK_SETPOINT)
-    
-    viz_lines.append('line')
-      .attr('stroke', '#555')
-      .attr('stroke-width', '2')
-      .attr('x1', -width/2)
-      .attr('x2',  width/2)
-      .attr('y1', BLOCKED_SETPOINT)
-      .attr('y2',  BLOCKED_SETPOINT)
-      
-    const completedTaskRegion = viz_regions.append('rect')
-      .attr('x', -width/2)
-      .attr('width', width)
-      .attr('y', 0)
-      .attr('height', COMPLETED_TASK_SETPOINT)
-      .attr('fill', '#292')
-      .attr('opacity', 0)
-
-    const mainTaskRegion = viz_regions.append('rect')
-      .attr('x', -width/2)
-      .attr('width', width)
-      .attr('y', COMPLETED_TASK_SETPOINT)
-      .attr('height', BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT)
-      .attr('fill', '#fff')
-      .attr('opacity', 0)
-
-    const blockedTaskRegion = viz_lines.append('rect')
-      .attr('x', -width/2)
-      .attr('width', width)
-      .attr('y', BLOCKED_SETPOINT)
-      .attr('height', height - BLOCKED_SETPOINT)
-      .attr('fill', '#888')
-      .attr('opacity', 0);
-    
-    const gradients = defs.selectAll('linearGradient')
-      .data(links, d => d.id)
-      .join('linearGradient')
-        .attr('id', d => `grad-${d.id}`)
-        .attr('gradientUnits', 'userSpaceOnUse')
-    
-    gradients
-      .selectAll('stop')
-      .data(linkGradient)
-      .join('stop')
-      .attr('offset', d => d.offset)
-      .attr('stop-color', d => d.color)
-    
-    const node = svg.append('g')
-      .attr('stroke','#555')
-      .attr('stroke-width', 2)
-    .selectAll('g')
-    .data(nodes)
-    //.join('g').append('rect')
-    .join('g').append('rect')
-      .attr('r', d => RAD_SCALAR*d.priority)
-      .attr('fill', colorNode)
-      .attr('width', BLOCKER_SIZE)
-      .attr('height', BLOCKER_SIZE)
-      .attr('rx', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
-      .attr('ry', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
-      //.on('mouseover', tooltipUpdate)
-      //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
-      //.on('mouseout', () => tooltip.style('visibility', 'hidden'))
-      .on('click', selectNode)
-
-    
-    nodes.forEach(d => {d.x = 0; d.y = 200; })
-    
-    node.append('title').text(d => d.title);
-    // Add a drag behavior.
-    node.call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
-
-    function selectNode(event, d) {
-      //alert('Selected node');
-      clearSelection(event, d);
-      tooltipUpdate(event, d);
-
-      let targetNode = event.target;
-
-      d3.select(this).attr('stroke', '#000')
-    }
-
-    function clearSelection(event, d) {
-      node.attr('stroke', null)
-    }
-    
-
-    
-    simulation.on('tick', () => {
-      node
-        .attr('x', d => constrain(d.x, -width/2, width/2) - BLOCKER_SIZE / 2)
-        .attr('y', d => constrain(d.y, 0, height) - BLOCKER_SIZE/2)
-        .attr('fill', colorNode);
-
-      link
-        .attr('x1', d => d.source.x)
-        .attr('x2', d => d.target.x)
-        .attr('y1', d => d.source.y)
-        .attr('y2', d => d.target.y)
-      
-      gradients
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y)
-    });
+function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {nodes: [], links: []}) 
+                      : { nodes : Node[], links: Link[]} {
+  //const nodes = importData(tasks)
+  const nodeMap = new Map<string, Node>(prev.nodes.map(node => [node.id, node]))
+  const links = prev.links;
 
 
-    function tooltipUpdate(event, d) {
-      let targetNode = event.target;
-      //console.log(targetNode)
-      //console.log(d)
+  const d = refactorData(tasks, {nodes: nodeMap, links: links})
 
-      d.hovered = true;
-      tooltip.style('visibility', 'visible')
+  return { nodes: Array.from(d.nodes.values()), links: d.links }
 
-      tooltip.select('#title').text(d.task.title)
-      tooltip.select('#status').text(d.task.status)
-      tooltip.select('#description').text(d.task.description)
-
-      tooltip.style('left', event.x)
-      tooltip.style('top', event.x)
-
-
-    }
-
-    
-    // Set the position attributes of links and nodes each time the simulation ticks.
-    // Reheat the simulation when drag starts, and fix the subject position.
-    function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-    }
-
-    // Update the subject (dragged node) position during drag.
-    function dragged(event) {
-      let targetNode = event.subject;
-
-      //constrain(d.x, -width/2, width/2)
-      event.subject.fx = constrain(event.x, -width/2, width/2)
-      event.subject.fy = constrain(event.y, 0, height);
-
-      if (targetNode.task.status != 'complete') {
-
-        if (event.y < COMPLETED_TASK_SETPOINT) {
-          completedTaskRegion.attr('opacity', .2)
-
-        } else {
-          completedTaskRegion.attr('opacity', 0)
-        }
-      }
-
-      if (targetNode.task.status == 'complete') {
-        if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
-          mainTaskRegion.attr('opacity', .99)
-
-        } else {
-          mainTaskRegion.attr('opacity', 0)
-        }
-
-      }
-
-      if (!targetNode.task.isBlocked) {
-        if (event.y > BLOCKED_SETPOINT) {
-          blockedTaskRegion.attr('opacity', .5)
-        } else {
-          blockedTaskRegion.attr('opacity', 0)
-        }
-      }
-
-    }
-
-    // Restore the target alpha so the simulation cools after dragging ends.
-    // Unfix the subject position now that it’s no longer being dragged.
-    function dragended(event) {
-
-      let targetNode = event.subject;
-
-      if (!event.active) simulation.alphaTarget(0.1);
-
-
-      if (!targetNode.task.isExternal) {
-        event.subject.fx = null;
-        event.subject.fy = null;
-      }
-
-      if (targetNode.y < COMPLETED_TASK_SETPOINT) {
-        targetNode.status = 'complete';
-        tasks[targetNode.id].status = 'complete';
-
-      }
-      if (targetNode.y > COMPLETED_TASK_SETPOINT) {
-        targetNode.status = 'not started';
-        tasks[targetNode.id].status = 'not started';
-
-      }
-
-
-
-      completedTaskRegion.attr('opacity', 0)
-      mainTaskRegion.attr('opacity', 0)
-      blockedTaskRegion.attr('opacity', 0)
-      nodes = recalculate(nodes);
-
-    }
-
-      
-
-  });
-
-
-  return (
-    <div style={{border:'0px dotted blue'}}>
-    <svg ref={svgRef}><g></g></svg>
-    </div>
-  )
 }
 
-function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: (event: CommitEvent) => void; }) {
+function SimGood({ tasks, onCommit } : { tasks: TaskMap, onCommit: (event: CommitEvent) => void; }) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
+  const nodeRef = useRef<Map<string, Node>>(new Map());
+  const linkRef = useRef<Link[]>([]);
+  const simDataRef = useRef<{nodes: Node[], links: Link[]}>({nodes: [], links: []});
 
 
   const [snapshot, setTasks] = useState<Record<string, Task>>(tasks)
@@ -502,41 +174,16 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
     [snapshot]
   )
 
-  const nodes = useMemo(
-    () => importData(solvedTasks),
-    [solvedTasks]
-  )
-
   let width = 500;
   let height = 400;
 
-  useEffect(() => {
-    const sim = d3.forceSimulation<Node>()
-      .alphaTarget(.1)
-      .alphaDecay(.01)
-      .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
-      .force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
-      .force("center", d3.forceX(0).strength(fCENTER))
-      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
+  useEffect(() => { // Initial effect
 
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.status != 'complete', -1))
-      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
-    
-    simRef.current = sim;
+    console.log("Initial effect");
 
-    return () => sim.stop();
-
-  }, []);
-
-  useEffect(() => {
-    if (!svgRef.current) return;
-
-    const svg = d3.select(svgRef.current)
-    svg.selectAll("*").remove()
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
 
     svg
       .attr('height', height)
@@ -544,13 +191,103 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
       .attr('viewBox', [-width/2, 0, width, height])
       .attr('style', 'display: block; background-color: #eee;')
     
-    width = +svg.attr('width');
-    height = +svg.attr('height');
 
-    let tooltip = d3.select('div#tooltip')
+    const viz_regions = svg.append('g').attr('id', 'regions');
+    const viz_lines = svg.append('g').attr('id', 'borders');
+    const defs = svg.append('defs');
+
+    function makeLine(y : number, color : string) {
+      const l = viz_lines.append('line')
+        .attr('stroke', color)
+        .attr('stroke-width', '2')
+        .attr('x1', -width/2)
+        .attr('x2',  width/2)
+        .attr('y1', y)
+        .attr('y2',  y)
+      return l;
+    }
+
+    makeLine(COMPLETED_TASK_SETPOINT, '#292');
+    makeLine(BLOCKED_SETPOINT, '#555');
+
+    const sim = d3.forceSimulation<Node>()
+      .alphaTarget(.1)
+      .alphaDecay(.01)
+      .force("charge", d3.forceManyBody().strength(fCHARGE))
+      .force("collide", d3.forceCollide(d => RAD_SCALAR*d.task.priority))
+      //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+
+      .force("center", d3.forceX(0).strength(fCENTER))
+      .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
+
+      //.force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
+      //.force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
+      //.force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
+      //.force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
+
+    simRef.current = sim;
+
+    const node = svg.append('g')
+      .attr('id', 'node')
+      .attr('stroke-width','2')
+      .attr('stroke','#555');
+
+    const link = svg.append('g')
+      .attr('id', 'link')
+      .attr('stroke-width','2');
+
+
+    function makeRegion(y : number, height : number, fill : string) {
+      const region = viz_regions.append('rect')
+        .attr('x', -width/2)
+        .attr('width', width)
+        .attr('y', y)
+        .attr('height', height)
+        .attr('fill', fill)
+        .attr('opacity', 0)
+
+      return region;
+    }
+
+    const completedTaskRegion = makeRegion(0, COMPLETED_TASK_SETPOINT, '#292').attr('id','complete');
+    const mainTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT, '#fff').attr('id', 'main');
+    const blockedTaskRegion = makeRegion(BLOCKED_SETPOINT, height - BLOCKED_SETPOINT, '#888').attr('id','blocked');
+
+  }, [width, height]);
+
+/*
+ 
+    ██╗   ██╗██████╗ ██████╗  █████╗ ████████╗███████╗    ███████╗███████╗███████╗███████╗ ██████╗████████╗
+    ██║   ██║██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██╔════╝    ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝
+    ██║   ██║██████╔╝██║  ██║███████║   ██║   █████╗      █████╗  █████╗  █████╗  █████╗  ██║        ██║   
+    ██║   ██║██╔═══╝ ██║  ██║██╔══██║   ██║   ██╔══╝      ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   
+    ╚██████╔╝██║     ██████╔╝██║  ██║   ██║   ███████╗    ███████╗██║     ██║     ███████╗╚██████╗   ██║   
+     ╚═════╝ ╚═╝     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝    ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   
+                                                                                       
+*/
+
+  useEffect(() => { // Update effect
+
+    console.log("Update effect");
+    if (!svgRef.current) return;
+    if (!simRef.current) return;
+
+    const svg = d3.select(svgRef.current)
+    //svg.selectAll("*").remove()
+
+    //width = +svg.attr('width');
+    //height = +svg.attr('height');
+
+    const tooltip = d3.select('div#tooltip')
+    const viz_regions = svg.select('g#regions');
+    const defs = svg.select('defs');
+    const simulation = simRef.current;
     
-    let { nodes, links } = buildSimData(tasks);
+    
+    //const { nodes, links } = buildSimData(tasks);
 
+    //simulation.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK)) 
+    /*
     const simulation = d3.forceSimulation<Node>(nodes)
       .alphaTarget(.1)
       .alphaDecay(.01)
@@ -561,22 +298,61 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
       .force("center", d3.forceX(0).strength(fCENTER))
       .force("gravity", d3.forceY(GRAVITY_SETPOINT).strength(fGRAVITY))
 
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.status != 'complete', -1))
+      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
       .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.status=='complete'))
+      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
       .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
+    */
 
     
-    const link = svg.append('g')
-      //.attr('stroke', '#333')
-      .attr('stroke-width', '2')
+    console.debug("old simdataref", simDataRef.current.nodes)
+
+    
+    const simData = buildSimData(tasks, simDataRef.current)
+    let nodes = simData.nodes;
+    let links = simData.links;
+
+    simDataRef.current = {nodes: simData.nodes, links: simData.links}
+
+
+    console.log("Update tasks:", tasks);
+    console.log("Update nodes:", nodes);
+    console.log("Update links:", links);
+    
+
+    const node = svg.select('g#node')
+      .selectAll('rect')
+      .data(nodes, d => d.task.id)
+      .join(
+        enter => {
+
+          console.log("Enter has", enter.size(), "new objects");
+          //if (enter.size()) simulation.nodes(nodes);
+          return enter.append('rect')
+            .attr('width', BLOCKER_SIZE) 
+            .attr('height', BLOCKER_SIZE) 
+            .attr('rx', d => d.task.isExternal ? 3 : BLOCKER_SIZE) 
+            .attr('ry', d => d.task.isExternal ? 3 : BLOCKER_SIZE)
+
+        },
+        update => update,//.attr('width', 50),
+        exit => { exit.remove(); }
+      );
+
+
+    simulation.nodes(nodes);
+    //.exit().remove();
+        //.on('mouseover', tooltipUpdate)
+        //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
+        //.on('mouseout', () => tooltip.style('visibility', 'hidden'))
+        //.on('click', selectNode);
+
+    const link = svg.select('g#link')
       .selectAll('line')
       .data(links, d => d.id)
       .join('line')
       .attr('stroke', d=>`url(#grad-${d.id})`)
 
-    
-    
     const gradients = defs.selectAll('linearGradient')
       .data(links, d => d.id)
       .join('linearGradient')
@@ -590,28 +366,7 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
       .attr('offset', d => d.offset)
       .attr('stop-color', d => d.color)
     
-    const node = svg.append('g')
-      .attr('stroke','#555')
-      .attr('stroke-width', 2)
-    .selectAll('g')
-    .data(nodes)
-    //.join('g').append('rect')
-    .join('g').append('rect')
-      .attr('r', d => RAD_SCALAR*d.priority)
-      .attr('fill', colorNode)
-      .attr('width', BLOCKER_SIZE)
-      .attr('height', BLOCKER_SIZE)
-      .attr('rx', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
-      .attr('ry', d => d.task.isExternal ? 0 : BLOCKER_SIZE)
-      //.on('mouseover', tooltipUpdate)
-      //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
-      //.on('mouseout', () => tooltip.style('visibility', 'hidden'))
-      .on('click', selectNode)
-
-    
-    nodes.forEach(d => {d.x = 0; d.y = 200; })
-    
-    node.append('title').text(d => d.title);
+    //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
     node.call(d3.drag()
           .on("start", dragstarted)
@@ -655,7 +410,7 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
 
 
     function tooltipUpdate(event, d) {
-      let targetNode = event.target;
+      //let targetNode = event.target;
       //console.log(targetNode)
       //console.log(d)
 
@@ -672,7 +427,6 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
 
     }
 
-    
     // Set the position attributes of links and nodes each time the simulation ticks.
     // Reheat the simulation when drag starts, and fix the subject position.
     function dragstarted(event) {
@@ -680,6 +434,10 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
     }
+
+    const completedTaskRegion = viz_regions.select('#complete');
+    const mainTaskRegion = viz_regions.select('#main');
+    const blockedTaskRegion = viz_regions.select('#blocked');
 
     // Update the subject (dragged node) position during drag.
     function dragged(event) {
@@ -723,29 +481,33 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
     // Unfix the subject position now that it’s no longer being dragged.
     function dragended(event) {
 
-      let targetNode = event.subject;
+      const targetNode = event.subject;
 
       if (!event.active) simulation.alphaTarget(0.1);
 
 
+      // Un-fix node position
       if (!targetNode.task.isExternal) {
         event.subject.fx = null;
         event.subject.fy = null;
       }
 
       if (targetNode.y < COMPLETED_TASK_SETPOINT) {
-        targetNode.status = 'complete';
-        tasks[targetNode.id].status = 'complete';
+        //targetNode.status = 'complete';
+        //tasks[targetNode.id].status = 'complete';
 
-
-        onCommit({id: targetNode.id, type: 'complete'})
+        if (targetNode.task.status != 'complete') {
+          onCommit({id: targetNode.id, type: 'complete'})
+        }
 
       }
       if (targetNode.y > COMPLETED_TASK_SETPOINT) {
-        targetNode.status = 'not started';
-        tasks[targetNode.id].status = 'not started';
+        //targetNode.status = 'not started';
+        //tasks[targetNode.id].status = 'not started';
 
-        onCommit({id: targetNode.id, type: 'complete'})
+        if (targetNode.task.status == 'complete') {
+          onCommit({id: targetNode.id, type: 'uncomplete'})
+        }
 
       }
 
@@ -754,13 +516,13 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
       completedTaskRegion.attr('opacity', 0)
       mainTaskRegion.attr('opacity', 0)
       blockedTaskRegion.attr('opacity', 0)
-      nodes = recalculate(nodes);
+      //nodes = recalculate(nodes);
 
     }
 
       
 
-  });
+  }, [tasks]);
 
 
   return (
@@ -770,87 +532,87 @@ function SimGood({ tasks, onCommit } : { tasks: Record<string, Task>, onCommit: 
   )
 }
 
+function Test() {
+  const testRef = useRef(null);
+  useEffect(() => {
+    const svg = d3.select(testRef.current);
 
-function handleCommit(event: CommitEvent) {
-  //setTasks(prev =>)
-}
+    svg.attr('height', 100).attr('width',100).attr('fill','#fff').style('border', '1px solid red');
 
+    svg.append('circle').attr('fill', '#f00').attr('r', 10).attr('cx', 20).attr('cy',20);
 
-function TaskBuilder({ callback } : { callback: (task: Task) => void }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState(0);
+    let data = [{}, {}, {}, {}];
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    const sim = d3.forceSimulation()
+      .force('charge', d3.forceManyBody().strength(0.500))
+      .force('center', d3.forceCenter(50,50))
+    
+    const node = svg.append('g')
+      .selectAll('circle')
+      .data(data)
+      .join(
+        enter => enter.append('circle')
+          .attr('fill','#fff')
+          .attr('r', 10),
+        update => update,
+        exit => exit.remove()
+      )
+    
+    //sim.nodes(data);
+    
+    sim.on('tick', () => {
+      node
+        .attr('cx', d => d.x)
+        .attr('cy', d => d.y)
 
-    if (!title.trim()) return;
-
-    const t : Task = {
-      title: title,
-      description: description.trim(),
-      priority: priority,
-      id: crypto.randomUUID(),
-      parents: [],
-      children: []
-    }
-
-    callback(t);
-
-    setTitle("");
-    setDescription("")
-  }
-
+    })
+  })
   return (
-    <div>
-      <h2>Add task!</h2>
-      <form onSubmit={handleSubmit}>
-
-        <label htmlFor="title">Title</label>
-        <input type="text" name="title" id="title" 
-          value={title} onChange={e => setTitle(e.target.value)} 
-        />
-        <br/>
-
-        <label htmlFor="details">Details</label>
-        <input type="text" name="details" id="details" 
-          value={description} onChange={e => setDescription(e.target.value)}
-        />
-        <br/>
-
-        <label htmlFor="priority">Priority</label>
-        <input type="number" name="priority" id="priority" 
-          value={priority} onChange={ e=>setPriority(Number(e.target.value)) } 
-          step={1} min={0} max={5} 
-        />
-        <br/>
-
-        <input type="submit" value="submit" />
-
-      </form>
-    </div>
+    <>
+      <svg ref={testRef}></svg>
+    </>
   )
+
 }
 
 function App() {
 
-  const [data, setData] = useState(() => testDict)
+  //const [data, setData] = useState(() => testDict)
+  const keysToKeep = ['a','b','c']
+  const testData = {}
+  for (const key of keysToKeep) { testData[key] = testDict[key] }
 
-  function addTask(t : Task) {
-    setData({...data, 'asdfasdf': t})
-    console.log("Task added?");
+  const [tasks, setTasks] = useState<TaskMap>(testData)
+
+  
+  //console.log("Initial task import:", tasks)
+
+  function handleCommit(event: CommitEvent) {
+    //setTasks(prev =>)
+    console.log("Commit event:", event);
+
+    setTasks(prev => {
+      switch (event.type) {
+        case 'complete': {
+          const t = prev[event.id];
+          return { ...prev, [event.id]: {...t, status: 'complete' } }
+        }
+        case 'uncomplete': {
+          const t = prev[event.id];
+          return { ...prev, [event.id]: {...t, status: 'not started' } }
+        }
+        default: return prev;
+      }
+    });
+
+
+    //setTasks()
   }
-
-
-  console.log(data)
-
-
 
   return (
     <>
       <div>
-        <Sim tasks={data} />
+        <SimGood tasks={tasks} onCommit={handleCommit}/>
         <div id='tooltip'>
           <h2 id='title'></h2>
           <h4 id='status'></h4>
