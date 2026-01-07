@@ -599,6 +599,34 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   )
 }
 
+function saveTasks(tasks: TaskMap) {
+  return async () => {
+    const snapshot = {
+      schemaVersion: 1,
+      tasks
+    }
+
+    await fetch("http://localhost:8000/save", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        //'Accept': 'application/json',
+      },
+      body: JSON.stringify(snapshot)
+    });
+  };
+}
+
+async function getTasks() {
+  return fetch("http://localhost:8000/load", { 
+    method: "GET",
+    headers: {
+      //"Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "true"
+    }
+  });
+}
+
 function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
 
   if (taskID == undefined) return (<div id='tooltip'></div>)
@@ -618,6 +646,12 @@ export default function App() {
   const [selectedTaskID, setSelectedTaskID] = useState<string>();
   const [hoveredTaskID, setHoveredTaskID] = useState<string>();
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
+
+  const save = saveTasks(solvedTasks);
+  const load = () => getTasks().then(res => res.json())
+    //.then(console.debug)
+    .then(data => setTasks(data.snapshot))
+    //.then(() => console.log("Data loaded"));
 
   
   //console.log("Initial task import:", tasks)
@@ -668,6 +702,8 @@ export default function App() {
       <Sim tasks={solvedTasks} onCommit={handleCommit} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
       <Inspect tasks={solvedTasks} taskID={selectedTaskID} onCommit={handleCommit}/>
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
+      <button onClick={save}>Save tasks to server</button>
+      <button onClick={load}>Load tasks from server</button>
     </>
   )
 }
