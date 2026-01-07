@@ -79,8 +79,8 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
         <p className='p'>{currentTask.description}</p>
         <p className='p'>Status: {currentTask.status}</p>
         <p className='p'>External: <input type="checkbox" checked={currentTask.isExternal}/></p>
-        <p>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
-        <p>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
+        <p className='p'>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
+        <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
 
 
         <input type='button' value='Edit' onClick={() => setIsEditing(true)}/>
