@@ -17,6 +17,12 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const currentTask = tasks[taskID];
 
+  useEffect(() => {
+    setIsEditing(false);
+  }, [taskID]);
+
+
+
   if (!currentTask) return (<></>);
 
   function toggleComplete(t : Task) {
