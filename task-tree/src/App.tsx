@@ -20,10 +20,9 @@ const FENCE_DECAY = -30;
 const fGRAVITY = .0040;
 const fCHARGE = -1.999;
 const fLINK = .1505;
-const fCENTER = 0.0010;
+const fCENTER = 0.0020;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
-const RAD_SCALAR = 15;
 const BLOCKER_SIZE = 25;
 
 const COLORS = {
@@ -80,15 +79,30 @@ export type CommitEvent =
 | { type: 'block'; id: string, blockerId: string }
 | { type: 'uncomplete'; id: string }
 | { id: string; type: 'update'; field: string; value: any }
+| { id: string; type: 'setIsExternal', value: boolean }
+| { id: string; type: 'setPriority', value: number }
 | { id: string; type: 'delete' }
 
 /* Get the hex color of a node based on its properties */
-function colorNode( node : Node ) : string {
+function nodeColor( node : Node ) : string {
   //console.log(node)
   //if (node.task.isExternal) { return '#39f'}
   if (node.task.status == 'complete') { return COLORS.node.fillComplete }
   if (node.task.isBlocked) { return COLORS.node.fillBlocked }
   return COLORS.node.fillAvailable;
+}
+
+const RAD_SCALAR = 1;
+function nodeSize(node: Node) : number {
+  const scale = RAD_SCALAR;
+  switch (node.task.priority) {
+    case 1: return 60;
+    case 2: return 45;
+    case 3: return 35;
+    case 4: return 30;
+    case 5: return 30;
+    default: return 10;
+  }
 }
 
 function nodeGravitySetpoint(node: Node) : number {
@@ -127,22 +141,41 @@ function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | 
 function calculate(tasks : Record<string, Task>) : Record<string, Task> {
   const next: Record<string, Task> = {}
 
+  /** Checks for deep completeness--the task and all its parents must be complete */
+  function isComplete(task: Task) {
+    if (task.status != 'complete') return false;
+
+    for (const dep of task.dependsOn) {
+      if (!isComplete(tasks[dep])) return false;
+    }
+    return true;
+
+  }
+
   for (const [id, t] of Object.entries(tasks)) {
     let isBlocked = false;
+    let status = t.status;
     for (const dep of t.dependsOn) {
-      if (tasks[dep].status !== 'complete') {
+      //if (tasks[dep].status !== 'complete') {
+      if (!isComplete(tasks[dep])) {
         isBlocked = true;
+        status = 'not started';
         break;
       }
     }
 
+    const isExternal = t.isExternal ?? false
+
     next[id] = {
       ...t,
-      isBlocked: isBlocked
+      isBlocked: isBlocked,
+      isExternal: isExternal,
+      status: status
     };
 
   }
 
+  console.debug("Recalculated:", next);
   return next
 }
 
@@ -220,6 +253,17 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
   //let width = parseInt(container.style('width'));
 
+/*
+ 
+ ██╗███╗   ██╗██╗████████╗██╗ █████╗ ██╗         ███████╗███████╗███████╗███████╗ ██████╗████████╗
+ ██║████╗  ██║██║╚══██╔══╝██║██╔══██╗██║         ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝
+ ██║██╔██╗ ██║██║   ██║   ██║███████║██║         █████╗  █████╗  █████╗  █████╗  ██║        ██║   
+ ██║██║╚██╗██║██║   ██║   ██║██╔══██║██║         ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   
+ ██║██║ ╚████║██║   ██║   ██║██║  ██║███████╗    ███████╗██║     ██║     ███████╗╚██████╗   ██║   
+ ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   
+                                                                                                  
+ 
+*/
   useEffect(() => { // Initial effect
 
     console.log("Initial effect");
@@ -240,20 +284,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .attr('width', width)
 
       .attr('viewBox', [-width/2, 0, width, height])
-      //.call(responsivefy);
-
-    //d3.select(window).on("resize." + container.attr("id"), resize);
-
-    /*
-    function resize() {
-      const targetWidth = parseInt(container.style('width'));
-      svg.attr('width', targetWidth)
-        .attr('viewBox', [-targetWidth/2, 0, targetWidth, height]) 
-      ;
-      console.debug('targetWidth', targetWidth);
-    }
-      */
-    
 
     const viz_regions = svg.append('g').attr('id', 'regions');
     const viz_lines = svg.append('g').attr('id', 'borders');
@@ -277,7 +307,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .alphaTarget(.1)
       .alphaDecay(.01)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => RAD_SCALAR)) // TODO: add priority
+      .force("collide", d3.forceCollide(d => 30)) // TODO: add priority
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
       .force("center", d3.forceX(0).strength(fCENTER))
@@ -362,13 +392,22 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
           console.log("Enter has", enter.size(), "new objects");
           //if (enter.size()) simulation.nodes(nodes);
           return enter.append('rect')
-            .attr('width', BLOCKER_SIZE) 
-            .attr('height', BLOCKER_SIZE) 
-            .attr('rx', d => d.task.isExternal ? 3 : BLOCKER_SIZE) 
-            .attr('ry', d => d.task.isExternal ? 3 : BLOCKER_SIZE)
+            .attr('width', nodeSize) 
+            .attr('height', nodeSize) 
+            .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
+            .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
 
         },
-        update => update,//.attr('width', 50),
+        update => {
+          update
+            .attr('width', nodeSize) 
+            .attr('height', nodeSize) 
+          update.transition()
+            .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
+            .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
+          return update
+        }
+        ,
         exit => { exit.remove(); }
       );
     
@@ -418,9 +457,10 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     function selectNode(event, d) {
       //alert('Selected node');
-      node.attr('stroke', null)
-
-      d3.select(this).attr('stroke', COLORS.node.strokeSelected)
+      node.attr('stroke', null).classed('selected', false);
+      d3.select(this)
+        .attr('stroke', COLORS.node.strokeSelected)
+        .classed('selected', true)
       selectTask(d.task.id)
     }
 
@@ -433,9 +473,9 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     
     simulation.on('tick', () => {
       node
-        .attr('x', d => constrain(d.x, -width/2, width/2) - BLOCKER_SIZE / 2)
-        .attr('y', d => constrain(d.y, 0, height) - BLOCKER_SIZE/2)
-        .attr('fill', colorNode);
+        .attr('x', d => constrain(d.x, -width/2, width/2) - nodeSize(d) / 2)
+        .attr('y', d => constrain(d.y, 0, height) - nodeSize(d)/2)
+        .attr('fill', nodeColor);
 
       link
         .attr('x1', d => d.source.x)
@@ -602,11 +642,19 @@ export default function App() {
         }
         case 'uncomplete': {
           const t = prev[event.id];
+          let curr = prev;
+          curr[event.id] = {...t, status:'not started'}
           return { ...prev, [event.id]: {...t, status: 'not started' } }
         }
         case 'update': { // TODO implement
           const t = prev[event.id]
           return {...prev, [event.id]: {...t}}
+        }
+        case 'setIsExternal': {
+          return {...prev, [event.id]: {...t, isExternal: event.value}}
+        }
+        case 'setPriority': {
+          return {...prev, [event.id]: {...t, priority: event.value}}
         }
         default: return prev;
       }
