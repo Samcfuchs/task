@@ -2,3 +2,6 @@ pydantic
 fastapi
 fastapi[standard]
 sqlmodel
+python-dotenv
+psycopg2-binary
+sqlalchemy

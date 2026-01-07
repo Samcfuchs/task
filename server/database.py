@@ -4,6 +4,8 @@ from datetime import datetime
 from sqlalchemy import create_engine, Integer, JSON, Column, Sequence, Text, String
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from dotenv import load_dotenv
+import os
 
 from models import Snapshot
 
@@ -18,7 +20,26 @@ class TableSnapshot(EntityBase):
     schema_version = Column(Integer, default=0)
     snapshot = Column(JSON, nullable=True)
 
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=True)
+def get_supa_engine():
+    load_dotenv()
+    # Fetch variables
+    USER = os.getenv("user")
+    PASSWORD = os.getenv("password")
+    HOST = os.getenv("host")
+    PORT = os.getenv("port")
+    DBNAME = os.getenv("dbname")
+
+    # Construct the SQLAlchemy connection string
+    DATABASE_URL = f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
+    #print(DATABASE_URL)
+
+    # Create the SQLAlchemy engine
+    engine = create_engine(DATABASE_URL)
+
+    return engine
+
+#engine = create_engine(f"sqlite:///{DB_PATH}", echo=True)
+engine = get_supa_engine()
 Session = sessionmaker(bind=engine)
 session = Session()
 
