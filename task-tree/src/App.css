@@ -3,6 +3,7 @@
   margin: 0;
   box-sizing: border-box;
   margin: 0 auto;
+  width: 100%;
 }
 
 body {
@@ -34,4 +35,72 @@ h2, h4 {
 }
 
 svg {
+  display: block;
+  background-color: #222229;
+  width: 100%;
+  height: 500px;
+}
+
+#inspect-pane {
+  background-color: #333;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: #333 0 0 20px;
+  margin: 10px;
+  font-size: 18px;
+
+  & .h1 {
+    font-size: large;
+    color: white;
+    display: inline-block;
+    margin-left: 20px;
+    padding: 10px 0;
+  }
+
+  & input[type='checkbox'] {
+    display: inline-block;
+  }
+
+  & input {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+  }
+
+  & input[type='button'] {
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: #1a1a1a;
+    cursor: pointer;
+    transition: border-color 0.25s;
+  }
+
+  .p {
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid orange;
+  }
+
+  #bar {
+    border: 1px solid blue;
+
+    & * {
+      display: inline-block;
+      margin: 10px 10px;
+    }
+  }
+
+  & .immutable {
+    background-color: #1a1a1a;
+    border-radius: 5px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+
 }

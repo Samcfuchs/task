@@ -2,8 +2,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
-import {loremIpsum} from 'lorem-ipsum'
 import {testDict} from './data.js';
+import {useWindowSize} from '@uidotdev/usehooks';
+import Inspect from './Inspect.tsx';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -53,7 +54,7 @@ const COLORS = {
 
 const linkGradient = [{offset: "10%", color: COLORS.edge.start}, {offset: "90%", color: COLORS.edge.end}];
 
-type Task = {
+export type Task = {
   title:string,
   id: string,
   description:string,
@@ -72,9 +73,9 @@ type Node = d3.SimulationNodeDatum & {
 }
 
 type Link = { source: string, target: string, id: string };
-type TaskMap = Record<string, Task>;
+export type TaskMap = Record<string, Task>;
 
-type CommitEvent =
+export type CommitEvent =
 | { type: 'complete'; id: string }
 | { type: 'block'; id: string, blockerId: string }
 | { type: 'uncomplete'; id: string }
@@ -137,7 +138,7 @@ function calculate(tasks : Record<string, Task>) : Record<string, Task> {
 
     next[id] = {
       ...t,
-      isBlocked
+      isBlocked: isBlocked
     };
 
   }
@@ -189,6 +190,18 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
 
 }
 
+/*
+ 
+ ███████╗██╗███╗   ███╗     ██████╗ ██████╗ ███╗   ███╗██████╗  ██████╗ ███╗   ██╗███████╗███╗   ██╗████████╗
+ ██╔════╝██║████╗ ████║    ██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔═══██╗████╗  ██║██╔════╝████╗  ██║╚══██╔══╝
+ ███████╗██║██╔████╔██║    ██║     ██║   ██║██╔████╔██║██████╔╝██║   ██║██╔██╗ ██║█████╗  ██╔██╗ ██║   ██║   
+ ╚════██║██║██║╚██╔╝██║    ██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██║   ██║██║╚██╗██║██╔══╝  ██║╚██╗██║   ██║   
+ ███████║██║██║ ╚═╝ ██║    ╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ╚██████╔╝██║ ╚████║███████╗██║ ╚████║   ██║   
+ ╚══════╝╚═╝╚═╝     ╚═╝     ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═══╝   ╚═╝   
+                                                                                                             
+ 
+*/
+
 function Sim({ tasks, onCommit, selectTask, hoverTask } : 
   { tasks: TaskMap, onCommit: (event: CommitEvent) => void, selectTask: (id: string) => void, hoverTask: (id: string) => void}) {
 
@@ -196,10 +209,16 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
   const simDataRef = useRef<{nodes: Node[], links: Link[]}>({nodes: [], links: []});
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
+  const containerRef = useRef(null);
 
-  let width = 500;
-  let height = 500;
 
+  let height = 800;
+  let width = 400;
+
+  const container = d3.select(containerRef.current)
+  //console.debug('width', parseInt(container.style('width')));
+
+  //let width = parseInt(container.style('width'));
 
   useEffect(() => { // Initial effect
 
@@ -208,11 +227,32 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    //const container = d3.select(svg.node().parentNode);
+    //const targetWidth = parseInt(container.style("width"));
+
+    width = parseInt(svg.style('width'))
+    height = parseInt(svg.style('height'))
+
+    console.log(width, height);
+
     svg
       .attr('height', height)
       .attr('width', width)
+
       .attr('viewBox', [-width/2, 0, width, height])
-      .attr('style', 'display: block; background-color: #eee;')
+      //.call(responsivefy);
+
+    //d3.select(window).on("resize." + container.attr("id"), resize);
+
+    /*
+    function resize() {
+      const targetWidth = parseInt(container.style('width'));
+      svg.attr('width', targetWidth)
+        .attr('viewBox', [-targetWidth/2, 0, targetWidth, height]) 
+      ;
+      console.debug('targetWidth', targetWidth);
+    }
+      */
     
 
     const viz_regions = svg.append('g').attr('id', 'regions');
@@ -291,7 +331,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
   useEffect(() => { // Update effect
 
-    console.log("Update effect");
+    console.log("Update effect", tasks);
     if (!svgRef.current) return;
     if (!simRef.current) return;
 
@@ -334,8 +374,14 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     
     node.on('click', selectNode);
     node.on('mouseover', hoverNode);
-    node.on('mousemove', (event, d) => tooltip.style('top', (event.offsetY+60)+'px').style('left', (event.x+10)+'px'))
+    node.on('mousemove', attachTooltipToMouse)
     node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
+
+    function attachTooltipToMouse(event, d) {
+      tooltip
+        .style('top', (event.y+10)+'px')
+        .style('left', (event.x+10)+'px');
+    }
 
 
     //.exit().remove();
@@ -411,6 +457,9 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       if (!event.active) simulation.alphaTarget(0.3).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
+
+      selectNode(event, event.subject);
+      tooltip.style('visibility','hidden');
     }
 
     const completedTaskRegion = viz_regions.select('#complete');
@@ -419,7 +468,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     // Update the subject (dragged node) position during drag.
     function dragged(event) {
-      let targetNode = event.subject;
+      const targetNode = event.subject;
 
       //constrain(d.x, -width/2, width/2)
       event.subject.fx = constrain(event.x, -width/2, width/2)
@@ -465,7 +514,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
 
       // Un-fix node position
-      if (!targetNode.task.isExternal) {
+      if (!targetNode.task.isExternal || true) {
         event.subject.fx = null;
         event.subject.fy = null;
       }
@@ -504,23 +553,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
 
   return (
-    <div style={{border:'0px dotted blue'}}>
-    <svg ref={svgRef}><g></g></svg>
-    </div>
-  )
-}
-
-function Inspect({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
-
-  if (!tasks[taskID]) return (<></>)
-    
-
-  return (
-    <div id='inspect-pane'>
-      <h1>{tasks[taskID].title}</h1>
-      <p>{tasks[taskID].description}</p>
-      
-      
+    <div style={{border:'0px dotted blue'}} id='svg-container' ref={containerRef}>
+    <svg ref={svgRef} width='100%' viewBox='0 0 {defaultWidth} {defaultHeight}'><g></g></svg>
     </div>
   )
 }
@@ -537,11 +571,12 @@ function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
   )
 }
 
-function App() {
+export default function App() {
 
   const [tasks, setTasks] = useState<TaskMap>(testDict)
   const [selectedTaskID, setSelectedTaskID] = useState<string>();
   const [hoveredTaskID, setHoveredTaskID] = useState<string>();
+  const solvedTasks = useMemo( () => calculate(tasks), [tasks])
 
   
   //console.log("Initial task import:", tasks)
@@ -551,14 +586,27 @@ function App() {
     console.log("Commit event:", event);
 
     setTasks(prev => {
+      //prev = calculate(prev);
+      prev = solvedTasks;
+      const t = prev[event.id];
+      console.log(t);
       switch (event.type) {
         case 'complete': {
-          const t = prev[event.id];
+
+          if (t.isBlocked) {
+            console.warn('commit fails', event, t);
+            return prev;
+          }
+
           return { ...prev, [event.id]: {...t, status: 'complete' } }
         }
         case 'uncomplete': {
           const t = prev[event.id];
           return { ...prev, [event.id]: {...t, status: 'not started' } }
+        }
+        case 'update': { // TODO implement
+          const t = prev[event.id]
+          return {...prev, [event.id]: {...t}}
         }
         default: return prev;
       }
@@ -568,15 +616,12 @@ function App() {
 
   return (
     <>
-      <div>
-        <Sim tasks={tasks} onCommit={handleCommit} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
-        <Inspect tasks={tasks} taskID={selectedTaskID}/>
-        <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
-      </div>
-
+      <Sim tasks={solvedTasks} onCommit={handleCommit} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
+      <Inspect tasks={solvedTasks} taskID={selectedTaskID} onCommit={handleCommit}/>
+      <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
     </>
   )
 }
 
       //<TaskBuilder callback={console.log}/>
-export default App
+//export default App
