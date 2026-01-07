@@ -34,7 +34,6 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
   }
 
 
-
   //console.log(isEditing);
 
   if (isEditing) {
@@ -44,14 +43,23 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
           <input type="checkbox" 
             defaultChecked={currentTask.status == 'complete'} 
             onClick={() => toggleComplete(currentTask)}
+            readOnly={true}
           />
           <input className='h1' type='text' defaultValue={currentTask.title}></input>
           <p className='immutable'>{currentTask.id}</p>
         </div>
-        <div className='p'>Priority: <input type='number' min='1' max='5' step='1' defaultValue={currentTask.priority}></input></div>
+        <div className='p'>Priority: 
+          <input type='number' 
+            min='1' max='5' step='1' 
+            defaultValue={currentTask.priority} 
+            onChange={e => onCommit({id: currentTask.id, type: 'setPriority', value: +e.target.value})}/>
+        </div>
         <div><input className='p' type='textarea' defaultValue={currentTask.description}></input></div>
         <input className='p' type='select' defaultValue={currentTask.status}></input>
+        <p>External: <input type="checkbox" defaultChecked={currentTask.isExternal}
+          onClick={() => onCommit({id: currentTask.id, type:'setIsExternal', value: !currentTask.isExternal})}/></p>
         <p>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
+        <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
 
         <input type='button' value='Save' onClick={() => setIsEditing(false)}/>
       </div>
@@ -70,7 +78,9 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
         <div className='p'>Priority: {currentTask.priority}</div>
         <p className='p'>{currentTask.description}</p>
         <p className='p'>Status: {currentTask.status}</p>
+        <p className='p'>External: <input type="checkbox" checked={currentTask.isExternal}/></p>
         <p>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
+        <p>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
 
 
         <input type='button' value='Edit' onClick={() => setIsEditing(true)}/>
