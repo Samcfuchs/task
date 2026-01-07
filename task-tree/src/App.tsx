@@ -599,8 +599,9 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   )
 }
 
-function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string}) {
+function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
 
+  if (taskID == undefined) return (<div id='tooltip'></div>)
   if (!tasks[taskID]) return (<div id='tooltip'></div>)
     
 
