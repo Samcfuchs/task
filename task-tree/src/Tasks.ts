@@ -12,6 +12,12 @@ export type Task = {
   isExternal: boolean
 }
 
+type Snapshot = {
+  snapshot: TaskMap,
+  schemaVersion: number,
+  
+}
+
 const SERVER_PATH = "http://localhost:8000"
 
 export function saveTasks(tasks: TaskMap) {
@@ -86,7 +92,6 @@ export function calculate(tasks : Record<string, Task>) : Record<string, Task> {
 export type CommitEvent =
 | { id: string; type: 'complete' }
 | { id: string; type: 'uncomplete'; }
-
 | { id: string; type: 'block'; blockerId: string }
 | { id: string; type: 'setIsExternal', value: boolean }
 | { id: string; type: 'setPriority', value: number }
@@ -118,6 +123,10 @@ export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
     }
     case 'setPriority': {
       return {...prev, [event.id]: {...t, priority: event.value}}
+    }
+    case 'block': {
+      if (event.blockerId == t.id) {return prev;} // don't block yourself
+      return {...prev, [event.id]: {...t, dependsOn: [...t.dependsOn, event.blockerId]}}
     }
 
     default: return prev;

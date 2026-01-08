@@ -10,10 +10,10 @@ import {testDict} from './data.js';
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
 const GRAVITY_SETPOINT = 200;
-const BLOCKED_SETPOINT = 250;
+const BLOCKED_SETPOINT = 400;
 
 // Fence parameters
-const FENCE_FORCE = -16;
+const fFENCE = -16;
 const FENCE_DECAY = -30;
 
 // Force strength
@@ -48,6 +48,11 @@ const COLORS = {
     available: '#999',
     blocked: '#666',
   }
+}
+
+const SIM = {
+  alphaTarget: 0.3,
+  alphaDecay: 0.01
 }
 
 const linkGradient = [{offset: "10%", color: COLORS.edge.start}, {offset: "90%", color: COLORS.edge.end}];
@@ -94,10 +99,10 @@ function constrain (n : number, min : number, max : number) : number {
 }
 
 /** Exert a custom y-force with exponential magnitude */
-function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
+function forceY(y0 : number, strength : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
   let nodes : Node[];
   const dir = direction ? direction : 1;
-  const fIB = FENCE_FORCE;
+  const fIB = strength;
   const decay = FENCE_DECAY;
   function force(alpha : number) {
     for (const node of nodes) {
@@ -245,8 +250,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     makeLine(BLOCKED_SETPOINT, COLORS.border.blocked);
 
     const sim = d3.forceSimulation<Node>()
-      .alphaTarget(.1)
-      .alphaDecay(.01)
+      .alphaTarget(SIM.alphaTarget)
+      .alphaDecay(SIM.alphaDecay)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
       .force("collide", d3.forceCollide(d => 30)) // TODO: add priority
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
@@ -254,10 +259,10 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .force("center", d3.forceX(0).strength(fCENTER))
       .force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
 
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, d => d.task.status != 'complete', -1))
-      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, d => d.task.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, d => d.task.isBlocked, -1))
+      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, -10, d => d.task.status != 'complete', -1))
+      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, -10, d => !d.task.isBlocked))
+      .force("complete", forceY(COMPLETED_TASK_SETPOINT, fFENCE, d => d.task.status=='complete'))
+      .force("blocked", forceY(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, -1))
 
     simRef.current = sim;
 
@@ -352,11 +357,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         exit => { exit.remove(); }
       );
     
-    node.on('click', selectNode);
-    node.on('mouseover', hoverNode);
-    node.on('mousemove', attachTooltipToMouse)
-    node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
-
     function attachTooltipToMouse(event, d) {
       tooltip
         .style('top', (event.y+10)+'px')
@@ -382,12 +382,20 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .attr('offset', d => d.offset)
       .attr('stop-color', d => d.color)
     
+    node.on('click', selectNode);
+    node.on('mouseover', hoverNode);
+    node.on('mousemove', attachTooltipToMouse)
+    node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
+
     //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
-    node.call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
+    function applyDragListener() {
+      node.call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+    };
+    applyDragListener();
 
     function selectNode(event, d) {
       //alert('Selected node');
@@ -424,15 +432,35 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         .attr('y2', d => d.target.y)
     });
 
+    function freezeSim() {
+      nodes.forEach(n => {
+        n.fx = n.x;
+        n.fy = n.y;
+        n.vx = 0;
+        n.vy = 0;
+      })
+      simulation.alpha(0).alphaTarget(0);
+    }
+    function resumeSim() {
+      //node.attr('vx',0).attr('vy',0);
+      nodes.forEach(n => {
+        n.fx = null;
+        n.fy = null;
+        n.vx = 0;
+        n.vy = 0;
+      })
+      simulation.alpha(.99).alphaTarget(SIM.alphaTarget).restart();
+
+    }
+
 
     // Set the position attributes of links and nodes each time the simulation ticks.
     // Reheat the simulation when drag starts, and fix the subject position.
     function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
+      if (!event.active) simulation.alphaTarget(0.3);//.restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
 
-      selectNode(event, event.subject);
       tooltip.style('visibility','hidden');
     }
 
@@ -468,23 +496,25 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       }
 
-      if (!targetNode.task.isBlocked) {
-        if (event.y > BLOCKED_SETPOINT) {
-          blockedTaskRegion.attr('opacity', .2)
-        } else {
-          blockedTaskRegion.attr('opacity', 0)
-        }
+      if (event.y > BLOCKED_SETPOINT) {
+        blockedTaskRegion.attr('opacity', .2)
+      } else {
+        blockedTaskRegion.attr('opacity', 0)
       }
 
     }
 
+
     // Restore the target alpha so the simulation cools after dragging ends.
     // Unfix the subject position now that it’s no longer being dragged.
-    function dragended(event) {
+    function dragended(event,d) {
 
-      const targetNode = event.subject;
+      console.debug('Drag ended on node', d)
 
-      if (!event.active) simulation.alphaTarget(0.1);
+      //const targetNode = event.subject;
+      const targetNode = d;
+
+      if (!event.active) simulation.alphaTarget(SIM.alphaTarget);
 
       // Un-fix node position
       event.subject.fx = null;
@@ -515,6 +545,40 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         }
 
       }
+
+      if (targetNode.y > BLOCKED_SETPOINT) {
+        // Now we need to get a node id to choose as blocker
+        
+        // Select node
+        selectNode(event, d);
+        // Add "ghost node"
+        // Freeze simulation
+        freezeSim();
+        const dragHandler = node.on('.drag');
+        node.on('.drag',null);
+
+        node.on('click.block', (event, d) => {
+          console.debug("node a", targetNode)
+          console.debug("node b", d)
+          onCommit({id: targetNode.id, type: 'block', blockerId: d.id})
+          resumeSim();
+          node.on('click.block', null);
+        })
+
+        viz_regions.on('click.resume', (event, d) => {
+          // kindly cancel
+          console.debug('Resuming without changes');
+          applyDragListener();
+          resumeSim();
+          viz_regions.on('click.resume', null);
+          // restore drags
+
+        });
+
+
+      }
+
+
       completedTaskRegion.attr('opacity', 0)
       mainTaskRegion.attr('opacity', 0)
       blockedTaskRegion.attr('opacity', 0)
