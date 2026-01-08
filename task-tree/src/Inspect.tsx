@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import {type CommitEvent, type TaskMap, type Task} from './App.tsx'
 
 
-export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: string, onCommit: (e: CommitEvent) => void}) {
+export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: string, onCommit: (e: CommitEvent) => void}) {
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const currentTask = tasks[taskID];
@@ -80,4 +80,17 @@ export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, tas
       </div>
     )
   }
+}
+
+export function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
+
+  if (taskID == undefined) return (<div id='tooltip'></div>)
+  if (!tasks[taskID]) return (<div id='tooltip'></div>)
+    
+
+  return (
+    <div id='tooltip'>
+      <h1>{tasks[taskID].title}</h1>
+    </div>
+  )
 }

@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
+import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
+import { Inspect, Tooltip } from './Inspect.tsx';
+
 import {testDict} from './data.js';
-import {useWindowSize} from '@uidotdev/usehooks';
-import Inspect from './Inspect.tsx';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -22,10 +23,6 @@ const fCHARGE = -1.999;
 const fLINK = .1505;
 const fCENTER = 0.0020;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
-
-const BLOCKER_SIZE = 25;
-
-const SERVER_PATH = "http://localhost:8000"
 
 const COLORS = {
   node: {
@@ -54,18 +51,6 @@ const COLORS = {
 }
 
 const linkGradient = [{offset: "10%", color: COLORS.edge.start}, {offset: "90%", color: COLORS.edge.end}];
-
-export type Task = {
-  title:string,
-  id: string,
-  description:string,
-  priority: number,
-  dependsOn: string[],
-  status: string,
-  isBlocked: boolean,
-  isExternal: boolean
-}
-
 type Node = d3.SimulationNodeDatum & {
   id: string,
   group?: number,
@@ -76,27 +61,16 @@ type Node = d3.SimulationNodeDatum & {
 type Link = { source: string, target: string, id: string };
 export type TaskMap = Record<string, Task>;
 
-export type CommitEvent =
-| { type: 'complete'; id: string }
-| { type: 'block'; id: string, blockerId: string }
-| { type: 'uncomplete'; id: string }
-| { id: string; type: 'update'; field: string; value: any }
-| { id: string; type: 'setIsExternal', value: boolean }
-| { id: string; type: 'setPriority', value: number }
-| { id: string; type: 'delete' }
-
-/* Get the hex color of a node based on its properties */
+/** Get the hex color of a node based on its properties */
 function nodeColor( node : Node ) : string {
-  //console.log(node)
   //if (node.task.isExternal) { return '#39f'}
   if (node.task.status == 'complete') { return COLORS.node.fillComplete }
   if (node.task.isBlocked) { return COLORS.node.fillBlocked }
   return COLORS.node.fillAvailable;
 }
 
-const RAD_SCALAR = 1;
+/** Get the radius of a node based on its properties */
 function nodeSize(node: Node) : number {
-  const scale = RAD_SCALAR;
   switch (node.task.priority) {
     case 1: return 60;
     case 2: return 45;
@@ -107,13 +81,14 @@ function nodeSize(node: Node) : number {
   }
 }
 
+/** Get the appropriate center of gravity for a given node */
 function nodeGravitySetpoint(node: Node) : number {
   if (node.task.status == 'complete') { return COMPLETED_TASK_SETPOINT; }
   if (node.task.isBlocked) { return 500; }
   return GRAVITY_SETPOINT;
 }
 
-/* Constrain a number between min and max */
+/** Constrain a number between min and max */
 function constrain (n : number, min : number, max : number) : number {
   return Math.min(Math.max(n,min), max)
 }
@@ -140,49 +115,10 @@ function forceY(y0 : number, nodeFilter : (n: Node) => boolean, direction : 1 | 
   return force;
 }
 
-function calculate(tasks : Record<string, Task>) : Record<string, Task> {
-  const next: Record<string, Task> = {}
-
-  /** Checks for deep completeness--the task and all its parents must be complete */
-  function isComplete(task: Task) {
-    if (task.status != 'complete') return false;
-
-    for (const dep of task.dependsOn) {
-      if (!isComplete(tasks[dep])) return false;
-    }
-    return true;
-
-  }
-
-  for (const [id, t] of Object.entries(tasks)) {
-    let isBlocked = false;
-    let status = t.status;
-    for (const dep of t.dependsOn) {
-      //if (tasks[dep].status !== 'complete') {
-      if (!isComplete(tasks[dep])) {
-        isBlocked = true;
-        status = 'not started';
-        break;
-      }
-    }
-
-    const isExternal = t.isExternal ?? false
-
-    next[id] = {
-      ...t,
-      isBlocked: isBlocked,
-      isExternal: isExternal,
-      status: status
-    };
-
-  }
-
-  console.debug("Recalculated:", next);
-  return next
-}
 
 function refactorData(tasks: TaskMap, 
-                      prev: {nodes: Map<string,Node>, links: Link[]} = {nodes: new Map<string, Node>(), links: []}) 
+                      prev: {nodes: Map<string,Node>, links: Link[]} 
+                          = {nodes: new Map<string, Node>(), links: []}) 
                       : { nodes : Map<string,Node>, links: Link[]} {
 
   const newNodes = prev.nodes;
@@ -238,7 +174,10 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
 */
 
 function Sim({ tasks, onCommit, selectTask, hoverTask } : 
-  { tasks: TaskMap, onCommit: (event: CommitEvent) => void, selectTask: (id: string) => void, hoverTask: (id: string) => void}) {
+  { tasks: TaskMap, 
+    onCommit: (event: CommitEvent) => void, 
+    selectTask: (id: string) => void, 
+    hoverTask: (id: string) => void } ) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -383,11 +322,11 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const links = simDataRef.current.links;
 
     simulation.nodes(nodes);
-    simulation.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+    simulation.force("link", d3.forceLink(links).id((d: Node) => d.id).strength(fLINK))
 
     const node = svg.select('g#node')
       .selectAll('rect')
-      .data(nodes, d => d.task.id)
+      .data(nodes, (d: Node) => d.task.id)
       .join(
         enter => {
 
@@ -423,13 +362,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         .style('top', (event.y+10)+'px')
         .style('left', (event.x+10)+'px');
     }
-
-
-    //.exit().remove();
-        //.on('mouseover', tooltipUpdate)
-        //.on("mousemove", (event, d) => tooltip.style("top", (event.offsetY+60)+"px").style("left",(event.x+10)+"px"))
-        //.on('mouseout', () => tooltip.style('visibility', 'hidden'))
-        //.on('click', selectNode);
 
     const link = svg.select('g#link')
       .selectAll('line')
@@ -583,18 +515,12 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         }
 
       }
-
-
-
       completedTaskRegion.attr('opacity', 0)
       mainTaskRegion.attr('opacity', 0)
       blockedTaskRegion.attr('opacity', 0)
       //nodes = recalculate(nodes);
 
     }
-
-      
-
   }, [tasks]);
 
 
@@ -605,59 +531,28 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   )
 }
 
-function saveTasks(tasks: TaskMap) {
-  return async () => {
-    const snapshot = {
-      schemaVersion: 1,
-      tasks
-    }
-
-    await fetch(SERVER_PATH + "/api/save", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        //'Accept': 'application/json',
-      },
-      body: JSON.stringify(snapshot)
-    });
-  };
-}
-
-async function getTasks() : Promise<{snapshot : TaskMap}> {
-  return fetch(SERVER_PATH + "/api/load", { 
-    method: "GET",
-    headers: {
-      //"Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "true"
-    }
-  }).then(res => res.json())
-}
-
-function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
-
-  if (taskID == undefined) return (<div id='tooltip'></div>)
-  if (!tasks[taskID]) return (<div id='tooltip'></div>)
-    
-
-  return (
-    <div id='tooltip'>
-      <h1>{tasks[taskID].title}</h1>
-    </div>
-  )
-}
+/*
+ 
+  █████╗ ██████╗ ██████╗ 
+ ██╔══██╗██╔══██╗██╔══██╗
+ ███████║██████╔╝██████╔╝
+ ██╔══██║██╔═══╝ ██╔═══╝ 
+ ██║  ██║██║     ██║     
+ ╚═╝  ╚═╝╚═╝     ╚═╝     
+                         
+ 
+*/
 
 export default function App() {
 
   const [tasks, setTasks] = useState<TaskMap>(testDict)
-  const [selectedTaskID, setSelectedTaskID] = useState<string>();
-  const [hoveredTaskID, setHoveredTaskID] = useState<string>();
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
 
+  const [selectedTaskID, setSelectedTaskID] = useState<string>();
+  const [hoveredTaskID, setHoveredTaskID] = useState<string>();
+
   const save = saveTasks(solvedTasks);
-  const load = () => getTasks()
-    //.then(console.debug)
-    .then(data => setTasks(data.snapshot))
-    //.then(() => console.log("Data loaded"));
+  const load = () => getTasks().then(data => setTasks(data.snapshot))
 
   
   //console.log("Initial task import:", tasks)
@@ -666,41 +561,7 @@ export default function App() {
     //setTasks(prev =>)
     console.log("Commit event:", event);
 
-    setTasks(prev => {
-      //prev = calculate(prev);
-      prev = solvedTasks;
-      const t = prev[event.id];
-      console.log(t);
-      switch (event.type) {
-        case 'complete': {
-
-          if (t.isBlocked) {
-            console.warn('commit fails', event, t);
-            return prev;
-          }
-
-          return { ...prev, [event.id]: {...t, status: 'complete' } }
-        }
-        case 'uncomplete': {
-          const t = prev[event.id];
-          const curr = prev;
-          curr[event.id] = {...t, status:'not started'}
-          return { ...prev, [event.id]: {...t, status: 'not started' } }
-        }
-        case 'update': { // TODO implement
-          const t = prev[event.id]
-          return {...prev, [event.id]: {...t}}
-        }
-        case 'setIsExternal': {
-          return {...prev, [event.id]: {...t, isExternal: event.value}}
-        }
-        case 'setPriority': {
-          return {...prev, [event.id]: {...t, priority: event.value}}
-        }
-        default: return prev;
-      }
-    });
-
+    setTasks(processIntent(event, solvedTasks))
   }
 
   return (
@@ -714,5 +575,4 @@ export default function App() {
   )
 }
 
-      //<TaskBuilder callback={console.log}/>
 //export default App
