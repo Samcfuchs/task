@@ -65,6 +65,7 @@ export function calculate(tasks : Record<string, Task>) : Record<string, Task> {
   for (const [id, t] of Object.entries(tasks)) {
     let isBlocked = false;
     let status = t.status;
+    t.dependsOn = Array.from(new Set(t.dependsOn))
     for (const dep of t.dependsOn) {
       //if (tasks[dep].status !== 'complete') {
       if (!isComplete(tasks[dep])) {
