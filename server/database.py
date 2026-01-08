@@ -1,7 +1,7 @@
 import sqlite3
 import json
 from datetime import datetime
-from sqlalchemy import create_engine, Integer, JSON, Column, Sequence, Text, String
+from sqlalchemy import create_engine, Integer, JSON, Column, Sequence, Text, String, DateTime, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from dotenv import load_dotenv
@@ -19,6 +19,7 @@ class TableSnapshot(EntityBase):
     user_id = Column(String(50), default='sam')
     schema_version = Column(Integer, default=0)
     snapshot = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 def get_supa_engine():
     load_dotenv()
