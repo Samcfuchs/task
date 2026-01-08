@@ -4,6 +4,8 @@ from typing import Annotated
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Field, SQLModel, Session, create_engine, select
 import database
@@ -30,7 +32,6 @@ origins = [
     'http://127.0.0.1:5172',
 ]
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
@@ -43,7 +44,14 @@ def load_snapshot():
     return database.get_snapshot()[0]
 
 
-@app.post("/save")
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
+@app.get("/")
+def index():
+    return FileResponse('static/index.html')
+
+
+
+@app.post("/api/save")
 def save(snapshot: Snapshot) -> Snapshot:
     logger.info("Save running")
     database.insert(snapshot)
@@ -51,7 +59,7 @@ def save(snapshot: Snapshot) -> Snapshot:
     return snapshot
 
 
-@app.get("/load")
+@app.get("/api/load")
 def load():
     snap = database.get_latest_snapshot()
     return snap

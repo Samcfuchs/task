@@ -25,6 +25,8 @@ const fCENTER = 0.0020;
 
 const BLOCKER_SIZE = 25;
 
+const SERVER_PATH = "http://localhost:8000"
+
 const COLORS = {
   node: {
     stroke: '#000',
@@ -552,12 +554,16 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       if (!event.active) simulation.alphaTarget(0.1);
 
-
       // Un-fix node position
-      if (!targetNode.task.isExternal || true) {
+      event.subject.fx = null;
+      event.subject.fy = null;
+
+      /*
+      if (!targetNode.task.isExternal) {
         event.subject.fx = null;
         event.subject.fy = null;
       }
+        */
 
       if (targetNode.y < COMPLETED_TASK_SETPOINT) {
         //targetNode.status = 'complete';
@@ -606,7 +612,7 @@ function saveTasks(tasks: TaskMap) {
       tasks
     }
 
-    await fetch("http://localhost:8000/save", {
+    await fetch(SERVER_PATH + "/api/save", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -617,14 +623,14 @@ function saveTasks(tasks: TaskMap) {
   };
 }
 
-async function getTasks() {
-  return fetch("http://localhost:8000/load", { 
+async function getTasks() : Promise<{snapshot : TaskMap}> {
+  return fetch(SERVER_PATH + "/api/load", { 
     method: "GET",
     headers: {
       //"Content-Type": "application/json",
       "Access-Control-Allow-Origin": "true"
     }
-  });
+  }).then(res => res.json())
 }
 
 function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
@@ -648,7 +654,7 @@ export default function App() {
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
 
   const save = saveTasks(solvedTasks);
-  const load = () => getTasks().then(res => res.json())
+  const load = () => getTasks()
     //.then(console.debug)
     .then(data => setTasks(data.snapshot))
     //.then(() => console.log("Data loaded"));
@@ -677,7 +683,7 @@ export default function App() {
         }
         case 'uncomplete': {
           const t = prev[event.id];
-          let curr = prev;
+          const curr = prev;
           curr[event.id] = {...t, status:'not started'}
           return { ...prev, [event.id]: {...t, status: 'not started' } }
         }

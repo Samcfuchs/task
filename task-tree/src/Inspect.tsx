@@ -1,16 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 //import * as d3 from 'd3';
 import {type CommitEvent, type TaskMap, type Task} from './App.tsx'
 
-function LittleSwitcher(state) {
-  return (
-
-    <></>
-
-    
-
-  )
-}
 
 export default function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: string, onCommit: (e: CommitEvent) => void}) {
 

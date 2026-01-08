@@ -24,7 +24,11 @@ lost on me.
 - [ ] Backend
     - [x] Write data models
     - [x] Get save/load running
+    - [x] Support cloud DB backend
+    - [x] Serve assets from FastAPI
     - [ ] Support multiple users
+        - [ ] Implement authentication
+        - [ ] Support multi-user in database
 - [ ] Recurring tasks
 - [ ] Alpha deployment
     - [ ] Create exploratory task tree
