@@ -1,4 +1,5 @@
 import { type TaskMap } from "./App";
+import { nanoid } from "nanoid";
 
 
 export type Task = {
@@ -96,13 +97,26 @@ export type CommitEvent =
 | { id: string; type: 'block'; blockerId: string }
 | { id: string; type: 'setIsExternal', value: boolean }
 | { id: string; type: 'setPriority', value: number }
-
+| { id: string; type: 'add', task?}
 | { id: string; type: 'delete' }
+
+export const generateID = () => nanoid(8);
+
+const getDefaultTask = (id : string | null) : Task => ({
+  title: "Untitled task",
+  id: id ?? generateID(),
+  description: "",
+  priority: 3,
+  dependsOn: [],
+  status: 'not started',
+  isBlocked: false,
+  isExternal: false
+});
 
 
 export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
   const t = prev[event.id];
-  console.log(t);
+  console.debug('Previous has task ', event.id, ' : ', t);
   switch (event.type) {
     case 'complete': {
 
@@ -128,6 +142,21 @@ export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
     case 'block': {
       if (event.blockerId == t.id) {return prev;} // don't block yourself
       return {...prev, [event.id]: {...t, dependsOn: [...t.dependsOn, event.blockerId]}}
+    }
+    case "add": {
+      const def = getDefaultTask(event.id);
+      const newTasks = {...prev, [def.id]: {...def, ...event.task}}
+      console.log('Commit new tasks including ', def, newTasks);
+      return newTasks;
+    }
+    case "delete": {
+      delete prev[event.id];
+      for (const childID of Object.keys(prev)) {
+        // Remove from dependencies
+        prev[childID].dependsOn = prev[childID].dependsOn.filter(v => v != event.id)
+      }
+      console.log("sanity check after intent", prev);
+      return prev
     }
 
     default: return prev;

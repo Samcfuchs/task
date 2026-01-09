@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
-import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
+import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent, generateID } from './Tasks.ts';
 import { Inspect, Tooltip } from './Inspect.tsx';
 
 import {testDict} from './data.js';
@@ -20,17 +20,20 @@ const FENCE_DECAY = -30;
 //const FORCE_SCALAR = .05;
 const fGRAVITY = .0040;
 const fCHARGE = -1.999;
-const fLINK = .1505;
+const fLINK = .1005;
 const fCENTER = 0.0020;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const COLORS = {
   node: {
     stroke: '#000',
+    strokeWidth: 2,
     strokeSelected: '#999',
     fillComplete: '#9f9',
-    fillBlocked: '#ccc',
+    fillBlocked: '#777',
     fillAvailable: '#fff',
+    fillGhost: '#fff',
+    opacityGhost: 0.8,
   },
 
   border: {
@@ -39,8 +42,12 @@ const COLORS = {
   },
 
   edge: {
+    strokeWidth: 2,
     start: '#9f9',
-    end: '#000'
+    end: '#000',
+    startGhost: '#9f9',
+    endGhost: '#000',
+    opacityGhost: 0.99,
   },
 
   region: {
@@ -53,6 +60,12 @@ const COLORS = {
 const SIM = {
   alphaTarget: 0.3,
   alphaDecay: 0.01
+}
+
+type SpawnHint = {
+  id: string,
+  x: number,
+  y: number
 }
 
 const linkGradient = [{offset: "10%", color: COLORS.edge.start}, {offset: "90%", color: COLORS.edge.end}];
@@ -75,7 +88,8 @@ function nodeColor( node : Node ) : string {
 }
 
 /** Get the radius of a node based on its properties */
-function nodeSize(node: Node) : number {
+function nodeSize(node: Node | null) : number {
+  if (!node) return 60;
   switch (node.task.priority) {
     case 1: return 60;
     case 2: return 45;
@@ -126,11 +140,11 @@ function refactorData(tasks: TaskMap,
                           = {nodes: new Map<string, Node>(), links: []}) 
                       : { nodes : Map<string,Node>, links: Link[]} {
 
-  const newNodes = prev.nodes;
+  const newNodes : Map<string, Node> = new Map()
   let newLinks = prev.links;
 
   for (const [id, task] of Object.entries(tasks)) {
-    const node = newNodes.get(id) ?? {
+    const node = prev.nodes.get(id) ?? {
       id: task.id,
       task: task,
       hovered: false,
@@ -180,7 +194,7 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
 
 function Sim({ tasks, onCommit, selectTask, hoverTask } : 
   { tasks: TaskMap, 
-    onCommit: (event: CommitEvent) => void, 
+    onCommit: (events: CommitEvent[]) => void, 
     selectTask: (id: string) => void, 
     hoverTask: (id: string) => void } ) {
 
@@ -189,6 +203,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   const simDataRef = useRef<{nodes: Node[], links: Link[]}>({nodes: [], links: []});
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
   const containerRef = useRef(null);
+  const [spawnHint, setSpawnHint] = useState<SpawnHint | null>(null);
 
 
   let height = 800;
@@ -270,10 +285,20 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .attr('id', 'link')
       .attr('stroke-width','2');
 
+    const ghostLink = svg.append('g').attr('id', 'ghost-link')
+
     const node = svg.append('g')
       .attr('id', 'node')
-      .attr('stroke-width','2')
+      .attr('stroke-width', COLORS.node.strokeWidth)
       .attr('stroke', COLORS.node.stroke);
+
+    const ghostNode = svg.append('g')
+      .attr('id', 'ghost-node')
+      .attr('stroke-width', COLORS.node.strokeWidth)
+      .attr('stroke', COLORS.node.stroke)
+      .attr('fill', COLORS.node.fillGhost)
+      .attr('opacity', COLORS.node.opacityGhost);
+
 
 
     function makeRegion(y : number, height : number, fill : string) {
@@ -321,6 +346,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const defs = svg.select('defs');
     const simulation = simRef.current;
     
+    console.log("Building simData from", solvedTasks);
     //simDataRef.current = buildSimData(tasks, simDataRef.current)
     simDataRef.current = buildSimData(solvedTasks, simDataRef.current)
     const nodes = simDataRef.current.nodes;
@@ -336,12 +362,14 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         enter => {
 
           console.log("Enter has", enter.size(), "new objects");
-          //if (enter.size()) simulation.nodes(nodes);
           return enter.append('rect')
             .attr('width', nodeSize) 
             .attr('height', nodeSize) 
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
+            .attr('fill', nodeColor)
+            .attr('id', d => d.task.id)
+            ;
 
         },
         update => {
@@ -351,11 +379,30 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
           update.transition()
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
+            .attr('fill', nodeColor);
           return update
         }
         ,
-        exit => { exit.remove(); }
+        exit => { 
+          console.log('Exit has', exit.size(), 'items:', exit)
+          exit.remove(); 
+        }
       );
+
+    if (spawnHint) {
+      node.each((d,i) => {
+        if (d.id == spawnHint.id) {
+          d.x = spawnHint.x;
+          d.y = spawnHint.y;
+          d.vx = 0;
+          d.vy = 0;
+        }
+
+      })
+
+
+      setSpawnHint(null)
+    }
     
     function attachTooltipToMouse(event, d) {
       tooltip
@@ -391,9 +438,9 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     // Add a drag behavior.
     function applyDragListener() {
       node.call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+            .on("start.d", dragstarted)
+            .on("drag.d", dragged)
+            .on("end.d", dragended));
     };
     applyDragListener();
 
@@ -417,7 +464,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       node
         .attr('x', d => constrain(d.x, -width/2, width/2) - nodeSize(d) / 2)
         .attr('y', d => constrain(d.y, 0, height) - nodeSize(d)/2)
-        .attr('fill', nodeColor);
 
       link
         .attr('x1', d => d.source.x)
@@ -504,6 +550,42 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     }
 
+    /**
+     * Spawn a temporary node in a new layer as a touch target
+     * @param x X position to spawn ghost node at
+     * @param y Y position to spawn ghost node at
+     * @param dependsOn 
+     * @param children 
+     * @returns d3 selection of the temporary node
+     */
+    function tempNode(x,y, children: string[] = []) {
+
+      const r = nodeSize(null);
+      console.log('node selection:', node.size());
+
+      const n = svg.select('g#ghost-node').append('rect')
+          .attr('width', r)
+          .attr('height', r) 
+          .attr('rx', r) 
+          .attr('ry', r)
+          .attr('x',x - r/2)
+          .attr('y',y - r/2)
+          .attr('opacity', COLORS.node.opacityGhost)
+      
+      console.debug(n)
+      return n
+    }
+
+    function tempLine(x1,y1,x2,y2) {
+      svg.select('g#ghost-link').append('line')
+        .attr('stroke', COLORS.edge.start)
+        .attr('stroke-width', COLORS.edge.strokeWidth)
+        .attr('x1', x1)
+        .attr('y1', y1)
+        .attr('x2', x2)
+        .attr('y2', y2+nodeSize(null)/2)
+    }
+
 
     // Restore the target alpha so the simulation cools after dragging ends.
     // Unfix the subject position now that it’s no longer being dragged.
@@ -532,7 +614,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         //tasks[targetNode.id].status = 'complete';
 
         if (targetNode.task.status != 'complete') {
-          onCommit({id: targetNode.id, type: 'complete'})
+          onCommit([{id: targetNode.id, type: 'complete'}])
         }
 
       }
@@ -541,8 +623,18 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         //tasks[targetNode.id].status = 'not started';
 
         if (targetNode.task.status == 'complete') {
-          onCommit({id: targetNode.id, type: 'uncomplete'})
+          onCommit([{id: targetNode.id, type: 'uncomplete'}])
         }
+
+      }
+
+      function cleanup() {
+        svg.select('g#ghost-link').selectAll('*').remove();
+        svg.select('g#ghost-node').selectAll('*').remove();
+        node.on('click.block', null);
+        viz_regions.on('click.resume', null);
+        resumeSim();
+        applyDragListener();
 
       }
 
@@ -552,27 +644,40 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         // Select node
         selectNode(event, d);
         // Add "ghost node"
+
         // Freeze simulation
         freezeSim();
-        const dragHandler = node.on('.drag');
+        // Disable dragging
         node.on('.drag',null);
 
         node.on('click.block', (event, d) => {
           console.debug("node a", targetNode)
           console.debug("node b", d)
-          onCommit({id: targetNode.id, type: 'block', blockerId: d.id})
-          resumeSim();
-          node.on('click.block', null);
+          onCommit([{id: targetNode.id, type: 'block', blockerId: d.id}])
+          cleanup();
+          //selectNode(event, d.id);
         })
 
+        const [ghostX, ghostY] = [d.x, d.y-100]
+        const ghostLine = tempLine(d.x,d.y,ghostX,ghostY)
+        const ghostNode = tempNode(ghostX, ghostY)
+        ghostNode.on('click', () => { 
+          const newID = generateID();
+          onCommit([
+            { id: newID, type: 'add' }, 
+            { id: targetNode.id, type: 'block', blockerId: newID }
+          ]);
+
+          setSpawnHint({id: newID, x:d.x, y:d.y - 100});
+          //selectNode(event, d.id);
+
+          cleanup();
+        })
+        
         viz_regions.on('click.resume', (event, d) => {
           // kindly cancel
           console.debug('Resuming without changes');
-          applyDragListener();
-          resumeSim();
-          viz_regions.on('click.resume', null);
-          // restore drags
-
+          cleanup();
         });
 
 
@@ -626,11 +731,24 @@ export default function App() {
     console.log("Commit event:", event);
 
     setTasks(processIntent(event, solvedTasks))
+
+    //console.debug("Updated tasks: ", tasks);
+  }
+
+  function handleCommits(events : CommitEvent[]) {
+
+    setTasks(prev => {
+      let updated = prev;
+      for (const e of events) {
+        updated = processIntent(e, updated);
+      }
+      return updated;
+    })
   }
 
   return (
     <>
-      <Sim tasks={solvedTasks} onCommit={handleCommit} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
+      <Sim tasks={solvedTasks} onCommit={handleCommits} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
       <Inspect tasks={solvedTasks} taskID={selectedTaskID} onCommit={handleCommit}/>
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       <button onClick={save}>Save tasks to server</button>
@@ -638,5 +756,7 @@ export default function App() {
     </>
   )
 }
+
+window.d3 = d3;
 
 //export default App

@@ -53,6 +53,7 @@ export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: str
         <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
 
         <input type='button' value='Save' onClick={() => setIsEditing(false)}/>
+        <input type='button' value='Delete' onClick={() => onCommit({id: currentTask.id, type: 'delete'} )}/>
       </div>
     )
   } else {
