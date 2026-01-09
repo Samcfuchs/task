@@ -8,11 +8,14 @@ lost on me.
 - [x] Add blockers (isExternal)
 - [x] Force simulation
 - [x] Free dependent points when point is updated
-- [ ] Interactions
-    - [ ] Add nodes
+- [x] Interactions
+    - [x] Add nodes
     - [ ] Remove nodes
-    - [ ] "Add blocker" flow
+    - [x] "Add blocker" flow
 - [ ] Add due dates
+- [ ] Add floating labels
+- [ ] Add "in progress" state
+- [ ] Design a cool checkbox
 - [ ] Allow more customization
     - [ ] Set color coding
     - [ ] Set size coding

@@ -97,6 +97,7 @@ export type CommitEvent =
 | { id: string; type: 'block'; blockerId: string }
 | { id: string; type: 'setIsExternal', value: boolean }
 | { id: string; type: 'setPriority', value: number }
+| { id: string; type: 'setTitle', value: string }
 | { id: string; type: 'add', task?}
 | { id: string; type: 'delete' }
 
@@ -135,6 +136,9 @@ export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
     }
     case 'setIsExternal': {
       return {...prev, [event.id]: {...t, isExternal: event.value}}
+    }
+    case 'setTitle': {
+      return {...prev, [event.id]: {...t, title: event.value}}
     }
     case 'setPriority': {
       return {...prev, [event.id]: {...t, priority: event.value}}
