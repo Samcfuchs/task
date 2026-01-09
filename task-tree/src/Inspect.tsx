@@ -4,7 +4,8 @@ import {type CommitEvent, type TaskMap, type Task} from './App.tsx'
 import Markdown from 'react-markdown';
 
 
-export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: string, onCommit: (e: CommitEvent) => void}) {
+export function Inspect({tasks, taskID, selectTask, onCommit} 
+  : {tasks: TaskMap, taskID: string, selectTask : (string) => void, onCommit: (e: CommitEvent) => void}) {
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const currentTask = tasks[taskID];
@@ -68,15 +69,15 @@ export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: str
           <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
           <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
           <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
-
         </div>
-        <MarkdownWidget key={'desc'+currentTask.id} defaultValue={currentTask.description} 
-          onBlur={commitFn('setDescription')} 
 
+        <MarkdownWidget key={'desc'+currentTask.id} 
+          defaultValue={currentTask.description} 
+          onBlur={commitFn('setDescription')} 
         />
+
+        <DependencyView key={'dep'+currentTask.id} task={currentTask} selectTask={selectTask} allTasks={tasks} onCommit={onCommit}/>
         <p className='p'>Status: {currentTask.status}</p>
-        <p className='p'>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
-        <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
         <p className='immutable'>{currentTask.id}</p>
 
 
@@ -189,6 +190,32 @@ function ExternalModal({defaultValue, update}) {
     </div>
   )
 
+}
+
+
+function DependencyView({task, selectTask, allTasks, onCommit} 
+  : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit}) {
+
+  function DependencyWidget({parent} : {parent : Task}) {
+    return (
+      <span onClick={e => selectTask(parent.id)}>{parent.title}
+      <button className='delete' onClick={e => {
+        e.stopPropagation();
+        onCommit({id:task.id, type:'unblock', blockerId:parent.id})}
+      }>x</button></span>
+        
+    )
+  }
+
+  return (
+    <div className='dependencies'>
+      {
+        task.dependsOn.map(parentID => {
+          return  <DependencyWidget parent={allTasks[parentID]}/>
+        })
+      }
+    </div>
+  )
 }
 
 function CheckBox({task} : {task: Task}) {

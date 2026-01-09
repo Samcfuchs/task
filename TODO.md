@@ -17,18 +17,29 @@ lost on me.
 - [ ] Inspector
     - [x] Add markdown descriptions
     - [ ] Add "in progress" state
-    - [-] Design a cool checkbox
+    - [x] Design a cool checkbox
     - [ ] Modifiable dependency view
     - [x] Priority modal
     - [x] External modal
+    - [ ] Make the checkbox do something
+- [ ] List view
+    - [ ] Implement de-select node
+    - [ ] Layout
+    - [ ] Design
+    - [ ] Interact with viz
 - [ ] Allow more customization
     - [ ] Set color coding
     - [ ] Set size coding
 - [ ] Add goals
 - [ ] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
+- [ ] Prohibit cyclical dependencies
 - [ ] Live reactive
     - [ ] Zoom (horizontal)
+- [ ] Visual sugar
+    - [ ] Animate completion modal on isExternal
+    - [ ] Improve the checkbox
+    - [ ] Improve performance (seeing frame drops in firefox)
 - [ ] Backend
     - [x] Write data models
     - [x] Get save/load running

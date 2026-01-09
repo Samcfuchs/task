@@ -2,6 +2,7 @@
   max-width: 1280px;
   margin: 0;
   box-sizing: border-box;
+  /* box-sizing: content-box; */
   margin: 0 auto;
   width: 100%;
 }
@@ -199,7 +200,7 @@ button,input[type='button'] {
   /* height: 100px; */
   border-radius: 5px;
   min-height: 50px;
-  max-height: 50px;
+  /* max-height: 50px; */
   border: 1px solid #555;
   cursor: text;
 
@@ -257,5 +258,54 @@ svg.checkbox {
 
   & .target {
     cursor: pointer;
+  }
+}
+
+#inspect-pane .dependencies {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+
+  /* margin: 20px 0; */
+  /* padding: 20px 0; */
+  font-size: .8em;
+  /* overflow-y: visible; */
+
+  & span {
+
+    border-radius: 5px;
+    background-color: #000;
+    padding: 10px;
+    position: relative;
+    cursor: pointer;
+
+
+    /* display: inline-block; */
+    display: inline-flex;
+    vertical-align: middle;
+    align-items: center;
+    margin: 20px 0;
+
+
+    &:hover {
+      /* border: 10px solid #fff; */
+      outline: 1px solid #fff;
+
+      & button.delete {
+        visibility: visible;
+      }
+    }
+
+    & button.delete {
+      visibility: hidden;
+      background-color: red;
+      color: white;
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      padding: 5px;
+
+    }
+
   }
 }

@@ -95,6 +95,7 @@ export type CommitEvent =
 | { id: string; type: 'complete' }
 | { id: string; type: 'uncomplete'; }
 | { id: string; type: 'block'; blockerId: string }
+| { id: string; type: 'unblock'; blockerId: string }
 | { id: string; type: 'setIsExternal', value: boolean }
 | { id: string; type: 'setPriority', value: number }
 | { id: string; type: 'setTitle', value: string }
@@ -150,6 +151,10 @@ export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
     case 'block': {
       if (event.blockerId == t.id) {return prev;} // don't block yourself
       return {...prev, [event.id]: {...t, dependsOn: [...t.dependsOn, event.blockerId]}}
+    }
+    case 'unblock': {
+      if (event.blockerId == t.id) {return prev;} // don't block yourself
+      return {...prev, [event.id]: {...t, dependsOn: t.dependsOn.filter(id => id != event.blockerId)}}
     }
     case "add": {
       const def = getDefaultTask(event.id);

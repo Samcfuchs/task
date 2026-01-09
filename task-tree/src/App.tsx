@@ -749,7 +749,7 @@ export default function App() {
   return (
     <>
       <Sim tasks={solvedTasks} onCommit={handleCommits} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
-      <Inspect tasks={solvedTasks} taskID={selectedTaskID} onCommit={handleCommit}/>
+      <Inspect tasks={solvedTasks} taskID={selectedTaskID} selectTask={setSelectedTaskID} onCommit={handleCommit}/>
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       <button onClick={save}>Save tasks to server</button>
       <button onClick={load}>Load tasks from server</button>
