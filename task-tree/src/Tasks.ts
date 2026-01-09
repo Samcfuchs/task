@@ -98,6 +98,7 @@ export type CommitEvent =
 | { id: string; type: 'setIsExternal', value: boolean }
 | { id: string; type: 'setPriority', value: number }
 | { id: string; type: 'setTitle', value: string }
+| { id: string; type: 'setDescription', value: string }
 | { id: string; type: 'add', task?}
 | { id: string; type: 'delete' }
 
@@ -139,6 +140,9 @@ export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
     }
     case 'setTitle': {
       return {...prev, [event.id]: {...t, title: event.value}}
+    }
+    case 'setDescription': {
+      return {...prev, [event.id]: {...t, description: event.value}}
     }
     case 'setPriority': {
       return {...prev, [event.id]: {...t, priority: event.value}}
