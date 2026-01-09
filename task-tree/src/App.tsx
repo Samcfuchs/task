@@ -376,7 +376,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
           update
             .attr('width', nodeSize) 
             .attr('height', nodeSize) 
-          update.transition()
+          update.transition().duration(200)
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
             .attr('fill', nodeColor);
@@ -738,7 +738,7 @@ export default function App() {
   function handleCommits(events : CommitEvent[]) {
 
     setTasks(prev => {
-      let updated = prev;
+      let updated = solvedTasks;
       for (const e of events) {
         updated = processIntent(e, updated);
       }

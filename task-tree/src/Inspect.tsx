@@ -42,7 +42,6 @@ export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: str
             readOnly={true}
           />
           <input className='h1' type='text' defaultValue={currentTask.title}></input>
-          <p className='immutable'>{currentTask.id}</p>
         </div>
         <div className='p'>Priority: 
           <input type='number' 
@@ -56,9 +55,9 @@ export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: str
           onClick={() => onCommit({id: currentTask.id, type:'setIsExternal', value: !currentTask.isExternal})}/></p>
         <p>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
         <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
+        <p className='immutable'>{currentTask.id}</p>
 
         <input type='button' value='Save' onClick={() => setIsEditing(false)}/>
-        <input type='button' value='Delete' onClick={() => onCommit({id: currentTask.id, type: 'delete'} )}/>
       </div>
     )
   } else {
@@ -66,24 +65,22 @@ export function Inspect({tasks, taskID, onCommit} : {tasks: TaskMap, taskID: str
       <div id='inspect-pane'>
         <div id='bar'>
           <CheckBox task={currentTask}/>
-          <TextWidget key={currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
-          <p className='immutable'>{currentTask.id}</p>
+          <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
+          <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
+          <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
+
         </div>
-        <MarkdownWidget key={currentTask.id} defaultValue={currentTask.description} 
+        <MarkdownWidget key={'desc'+currentTask.id} defaultValue={currentTask.description} 
           onBlur={commitFn('setDescription')} 
 
         />
-        <div className='p'>Priority: {currentTask.priority}</div>
-        <p className='p'>{currentTask.description}</p>
         <p className='p'>Status: {currentTask.status}</p>
-        <p className='p'>External: <input type="checkbox" checked={currentTask.isExternal}/></p>
-        <p>External: <input type="checkbox" defaultChecked={currentTask.isExternal}
-          onClick={() => onCommit({id: currentTask.id, type:'setIsExternal', value: !currentTask.isExternal})}/></p>
         <p className='p'>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
         <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
+        <p className='immutable'>{currentTask.id}</p>
 
 
-        <input type='button' value='Edit' onClick={() => setIsEditing(true)}/>
+        <input type='button' value='Delete' onClick={() => onCommit({id: currentTask.id, type: 'delete'} )}/>
         
         
       </div>
@@ -113,7 +110,7 @@ function TextWidget({defaultValue, onBlur}) {
   )
 }
 
-function MarkdownWidget({defaultValue, onBlur}) {
+function MarkdownWidget({defaultValue, onBlur, placeholderText="Description"}) {
   const [editing, setEditing] = useState(false)
 
   return (
@@ -131,7 +128,12 @@ function MarkdownWidget({defaultValue, onBlur}) {
         
         :
 
-        <Markdown>{defaultValue}</Markdown>
+          defaultValue ? 
+
+            <Markdown>{defaultValue}</Markdown>
+          :
+          
+          <p>{placeholderText}</p>
       }
     
     </div>
@@ -139,7 +141,55 @@ function MarkdownWidget({defaultValue, onBlur}) {
   )
 }
 
-function Modal({options} : {options : string[]}) {}
+type ModalOption = {
+  text: string,
+  color: string,
+}
+
+function mod(n: number, m: number) {
+  return ((n % m) + m) % m;
+}
+
+const priorityColors = {
+  1: '#CF0F0F',
+  2: '#ff2289ff',
+  3: '#F79A19',
+  4: '#5413bbff',
+  5: '#6A2C70',
+  0: '#777',
+}
+
+function PriorityModal({defaultValue, update}) {
+  // This function is only stupid because I decided to 1-index priority. bad idea.
+  function clickIncrement(v:number) : number { return (mod(defaultValue-2, 5)); }
+  
+  return (
+    <div className='modal priority button' 
+      onClick={e => update(clickIncrement(defaultValue)+1) }
+      style={{backgroundColor:priorityColors[defaultValue]}}
+    ><span>
+      {
+        '!'.repeat(6 - defaultValue)
+      }
+    </span>
+    </div>
+  )
+}
+
+function ExternalModal({defaultValue, update}) {
+  return (
+    <div className='modal external button' 
+      onClick={e => update(!defaultValue) }
+      style={{
+        backgroundColor: (defaultValue ? '#55f' : '#222'),
+        borderRadius: defaultValue ? '5px' : '25px'
+
+      }}
+    ><span> External </span>
+    </div>
+  )
+
+}
 
 function CheckBox({task} : {task: Task}) {
 

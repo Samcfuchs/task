@@ -14,8 +14,13 @@ lost on me.
     - [x] "Add blocker" flow
 - [ ] Add due dates
 - [ ] Add floating labels
-- [ ] Add "in progress" state
-- [ ] Design a cool checkbox
+- [ ] Inspector
+    - [x] Add markdown descriptions
+    - [ ] Add "in progress" state
+    - [-] Design a cool checkbox
+    - [ ] Modifiable dependency view
+    - [x] Priority modal
+    - [x] External modal
 - [ ] Allow more customization
     - [ ] Set color coding
     - [ ] Set size coding
