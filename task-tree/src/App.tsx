@@ -21,7 +21,9 @@ const FENCE_DECAY = -30;
 const fGRAVITY = .0040;
 const fCHARGE = -1.999;
 const fLINK = .1005;
-const fCENTER = 0.0020;
+const fCENTER = 0.0000;
+const rCOLLISION = 20;
+const fWALL = 0.0001;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const COLORS = {
@@ -58,8 +60,9 @@ const COLORS = {
 }
 
 const SIM = {
-  alphaTarget: 0.3,
-  alphaDecay: 0.01
+  alphaTarget: 0,
+  alphaDecay: 0.001,
+  ambientWarm: 0.2
 }
 
 type SpawnHint = {
@@ -91,11 +94,11 @@ function nodeColor( node : Node ) : string {
 function nodeSize(node: Node | null) : number {
   if (!node) return 60;
   switch (node.task.priority) {
-    case 1: return 60;
-    case 2: return 45;
-    case 3: return 35;
-    case 4: return 30;
-    case 5: return 30;
+    case 1: return 50;
+    case 2: return 35;
+    case 3: return 25;
+    case 4: return 20;
+    case 5: return 20;
     default: return 10;
   }
 }
@@ -149,7 +152,7 @@ function refactorData(tasks: TaskMap,
       task: task,
       hovered: false,
       selected: false,
-      x: 0,
+      x: (Math.random() * 400) - 200,
       y: 200,
       vx: 0,
       vy: 0
@@ -268,8 +271,12 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .alphaTarget(SIM.alphaTarget)
       .alphaDecay(SIM.alphaDecay)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => 30)) // TODO: add priority
+      .force("collide", d3.forceCollide(d => nodeSize(d) / 2)) // TODO: add priority
+      //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+
+      .force('leftWall', d3.forceX(-200).strength(fWALL))
+      .force('rightWall', d3.forceX(200).strength(fWALL))
 
       .force("center", d3.forceX(0).strength(fCENTER))
       .force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
@@ -369,6 +376,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
             .attr('fill', nodeColor)
             .attr('id', d => d.task.id)
+            .attr('x', d => (Math.random() * 400) - 200)
             ;
 
         },
@@ -503,7 +511,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     // Set the position attributes of links and nodes each time the simulation ticks.
     // Reheat the simulation when drag starts, and fix the subject position.
     function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3);//.restart();
+      if (!event.active) simulation.alphaTarget(SIM.ambientWarm).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
 

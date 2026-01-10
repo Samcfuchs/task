@@ -8,38 +8,25 @@ lost on me.
 - [x] Add blockers (isExternal)
 - [x] Force simulation
 - [x] Free dependent points when point is updated
-- [x] Interactions
+- [x] Viz interactions
     - [x] Add nodes
-    - [ ] Remove nodes
     - [x] "Add blocker" flow
-- [ ] Add due dates
+    - [ ] Select newly added nodes
 - [ ] Add floating labels
 - [ ] Inspector
     - [x] Add markdown descriptions
-    - [ ] Add "in progress" state
     - [x] Design a cool checkbox
-    - [ ] Modifiable dependency view
+    - [x] Modifiable dependency view
+    - [ ] Allow adding dependency from inspector
     - [x] Priority modal
     - [x] External modal
     - [ ] Make the checkbox do something
-- [ ] List view
-    - [ ] Implement de-select node
-    - [ ] Layout
-    - [ ] Design
-    - [ ] Interact with viz
-- [ ] Allow more customization
-    - [ ] Set color coding
-    - [ ] Set size coding
-- [ ] Add goals
+    - [ ] Make selection consistently highlight the correct node
+    - [ ] Save changes more consistently
 - [ ] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
-- [ ] Prohibit cyclical dependencies
 - [ ] Live reactive
     - [ ] Zoom (horizontal)
-- [ ] Visual sugar
-    - [ ] Animate completion modal on isExternal
-    - [ ] Improve the checkbox
-    - [ ] Improve performance (seeing frame drops in firefox)
 - [ ] Backend
     - [x] Write data models
     - [x] Get save/load running
@@ -48,10 +35,35 @@ lost on me.
     - [ ] Support multiple users
         - [ ] Implement authentication
         - [ ] Support multi-user in database
-- [ ] Recurring tasks
 - [ ] Alpha deployment
     - [ ] Create exploratory task tree
     - [ ] Splash screen
+
+----
+
+- [ ] Enrich tasks
+    - [ ] Add goals
+    - [ ] Recurring tasks
+    - [ ] Add due dates
+    - [ ] Add "in progress" state
+- [ ] List view
+    - [ ] Implement de-select node
+    - [ ] Layout
+    - [ ] Design
+    - [ ] Interact with viz
+- [ ] Visual sugar
+    - [ ] Animate completion modal on isExternal
+    - [ ] Improve the checkbox
+    - [ ] Improve performance (seeing frame drops in firefox)
+    - [ ] Animate node size changes
+    - [ ] Node trashcan
+    - [ ] Label regions
+    - [ ] Highlight connected nodes on selection
+    - [ ] Make the floating labels look good
+    - [ ] Allow more customization
+        - [ ] Set color coding
+        - [ ] Set size coding
+- [ ] Prohibit cyclical dependencies (not so important bc deps can be deleted)
 
 ## Notes on Forces
 
@@ -91,4 +103,25 @@ Note that node A may still be blocked if it depends on multiple incomplete
 nodes. It should stay blocked and return to the BLOCKED region. User repeats the
 previous action to remove more dependencies.
 
+
+## User Testing notes
+
+1. Changes aren't saved consistently
+2. It's not obvious which node is selected all the time
+3. Adding a dependency for a completed node requires me to drag it all the way
+   to blocked, and then it's also marked as incomplete again
+4. It's actually kind of annoying to have the nodes drift horizontally. Makes
+   them hard to organize and distinguish
+5. I actually do kind of want a save button
+6. There should be an obvious way to create a new task. "Add dependency" will
+   not cut it.
+7. Creating a new node should select it!!!
+8. The viz should cool down all the way.
+9. I want to anchor some nodes in place.
+10. Definitely observing some lag. Doesn't feel snappy.
+11. Titlebar could be bigger, honestly.
+12. Markdown styling is inconsistent.
+13. Dependency view is weird.
+14. There should maybe be a system for auto-pruning dependencies.
+15. Some bug caused dependency lines to be drawn outside of the main area.
 
