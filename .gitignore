@@ -25,7 +25,7 @@ dist-ssr
 
 __pycache__
 
-server/env
-server/*.db
-server/.env
-server/static
+env
+*.db
+.env
+static

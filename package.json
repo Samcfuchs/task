@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --outDir ../server/static --emptyOutDir",
+    "build": "vite build --outDir ./static --emptyOutDir",
     "lint": "eslint .",
     "preview": "vite preview"
   },

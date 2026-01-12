@@ -19,7 +19,8 @@ type Snapshot = {
   
 }
 
-const SERVER_PATH = "http://localhost:8000"
+//const SERVER_PATH = "http://localhost:8000"
+const SERVER_PATH = ""
 
 export function saveTasks(tasks: TaskMap) {
   return async () => {
