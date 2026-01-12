@@ -452,8 +452,12 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     };
     applyDragListener();
 
-    function selectNode(event, d) {
+    function selectNode(event?, d?) {
       //alert('Selected node');
+      if (!event || !d) {
+        selectTask(null)
+      }
+
       node.attr('stroke', null).classed('selected', false);
       d3.select(this)
         .attr('stroke', COLORS.node.strokeSelected)
@@ -521,6 +525,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const completedTaskRegion = viz_regions.select('#complete');
     const mainTaskRegion = viz_regions.select('#main');
     const blockedTaskRegion = viz_regions.select('#blocked');
+
+    viz_regions.on('click', e => selectNode());
 
     // Update the subject (dragged node) position during drag.
     function dragged(event) {
