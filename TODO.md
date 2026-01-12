@@ -46,9 +46,9 @@ lost on me.
     - [ ] Recurring tasks
     - [ ] Add due dates
     - [ ] Add "in progress" state
-- [ ] List view
-    - [ ] Implement de-select node
-    - [ ] Layout
+- [x] List view
+    - [x] Implement de-select node
+    - [x] Layout
     - [ ] Design
     - [ ] Interact with viz
 - [ ] Visual sugar

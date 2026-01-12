@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent, generateID } from './Tasks.ts';
-import { Inspect, Tooltip } from './Inspect.tsx';
+import { Inspect, Tooltip, ListView} from './Inspect.tsx';
 
 import {testDict} from './data.js';
 
@@ -456,6 +456,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       //alert('Selected node');
       if (!event || !d) {
         selectTask(null)
+        return;
       }
 
       node.attr('stroke', null).classed('selected', false);
@@ -762,11 +763,26 @@ export default function App() {
 
   return (
     <>
-      <Sim tasks={solvedTasks} onCommit={handleCommits} selectTask={setSelectedTaskID} hoverTask={setHoveredTaskID}/>
-      <Inspect tasks={solvedTasks} taskID={selectedTaskID} selectTask={setSelectedTaskID} onCommit={handleCommit}/>
+      <Sim tasks={solvedTasks} selectTask={setSelectedTaskID} 
+        hoverTask={setHoveredTaskID}
+        onCommit={handleCommits}/>
+      
+      {selectedTaskID == null ?
+        <ListView tasks={solvedTasks} selectTask={setSelectedTaskID} 
+          onCommit={handleCommit}/>
+
+        :
+
+        <Inspect tasks={solvedTasks} selectTask={setSelectedTaskID} 
+          taskID={selectedTaskID} 
+          onCommit={handleCommit}/>
+      }
+
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
-      <button onClick={save}>Save tasks to server</button>
-      <button onClick={load}>Load tasks from server</button>
+      <div>
+        <button onClick={save}>Save tasks to server</button>
+        <button onClick={load}>Load tasks from server</button>
+      </div>
     </>
   )
 }

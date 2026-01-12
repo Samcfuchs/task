@@ -33,60 +33,28 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
 
   //console.log(isEditing);
 
-  if (isEditing) {
-    return (
-      <div id="inspect-pane">
-        <div id="bar">
-          <input type="checkbox" 
-            defaultChecked={currentTask.status == 'complete'} 
-            onClick={() => toggleComplete(currentTask)}
-            readOnly={true}
-          />
-          <input className='h1' type='text' defaultValue={currentTask.title}></input>
-        </div>
-        <div className='p'>Priority: 
-          <input type='number' 
-            min='1' max='5' step='1' 
-            defaultValue={currentTask.priority} 
-            onChange={e => onCommit({id: currentTask.id, type: 'setPriority', value: +e.target.value})}/>
-        </div>
-        <div><input className='p' type='textarea' defaultValue={currentTask.description}></input></div>
-        <input className='p' type='select' defaultValue={currentTask.status}></input>
-        <p>External: <input type="checkbox" defaultChecked={currentTask.isExternal}
-          onClick={() => onCommit({id: currentTask.id, type:'setIsExternal', value: !currentTask.isExternal})}/></p>
-        <p>Blocked: <span className='immutable'>{currentTask.isBlocked.toString() ?? false}</span></p>
-        <p className='p'>Dependencies: <span className='immutable'>{currentTask.dependsOn.toString()}</span></p>
-        <p className='immutable'>{currentTask.id}</p>
-
-        <input type='button' value='Save' onClick={() => setIsEditing(false)}/>
+  return (
+    <div id='inspect-pane'>
+      <div id='bar'>
+        <CheckBox task={currentTask}/>
+        <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
+        <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
+        <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
       </div>
-    )
-  } else {
-    return (
-      <div id='inspect-pane'>
-        <div id='bar'>
-          <CheckBox task={currentTask}/>
-          <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
-          <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
-          <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
-        </div>
 
-        <MarkdownWidget key={'desc'+currentTask.id} 
-          defaultValue={currentTask.description} 
-          onBlur={commitFn('setDescription')} 
-        />
+      <MarkdownWidget key={'desc'+currentTask.id} 
+        defaultValue={currentTask.description} 
+        onBlur={commitFn('setDescription')} 
+      />
 
-        <DependencyView key={'dep'+currentTask.id} task={currentTask} selectTask={selectTask} allTasks={tasks} onCommit={onCommit}/>
-        <p className='p'>Status: {currentTask.status}</p>
-        <p className='immutable'>{currentTask.id}</p>
+      <DependencyView key={'dep'+currentTask.id} task={currentTask} selectTask={selectTask} allTasks={tasks} onCommit={onCommit}/>
 
 
-        <input type='button' value='Delete' onClick={() => onCommit({id: currentTask.id, type: 'delete'} )}/>
-        
-        
-      </div>
-    )
-  }
+      <input type='button' value='Delete' onClick={() => onCommit({id: currentTask.id, type: 'delete'} )}/>
+      
+      
+    </div>
+  )
 }
 
 export function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | undefined}) {
@@ -168,11 +136,8 @@ function PriorityModal({defaultValue, update}) {
     <div className='modal priority button' 
       onClick={e => update(clickIncrement(defaultValue)+1) }
       style={{backgroundColor:priorityColors[defaultValue]}}
-    ><span>
-      {
-        '!'.repeat(6 - defaultValue)
-      }
-    </span>
+    >
+      <span> { '!'.repeat(6 - defaultValue) } </span>
     </div>
   )
 }
@@ -244,5 +209,40 @@ function CheckBox({task} : {task: Task}) {
     <svg className='checkbox' viewBox="0 0 100 100">
       {radii.slice(task.priority).map(getCircle)}
     </svg>
+  )
+}
+
+export function ListView({tasks, selectTask, onCommit}) {
+
+  function ListItem({task} : {task: Task}) {
+    return (
+      <div className='list-item' onClick={e => selectTask(task.id)}>
+        <CheckBox task={task}></CheckBox>
+        <span>{task.title}</span>
+        <PriorityModal defaultValue={task.priority} 
+          update={n => onCommit({id:task.id, type: 'setPriority', value: n})}/>
+      </div>
+    )
+  }
+
+  function filter(task) : boolean {
+    return (task.status != 'complete');
+  }
+
+  function sort(task1, task2) : number {
+    return -(task2.priority - task1.priority);
+  }
+
+  return (
+    <div id='list-view'>
+      {
+        Object.values(tasks)
+          .filter(filter)
+          .sort(sort)
+          .map(t => <ListItem task={t}/>)
+      }
+
+
+    </div>
   )
 }
