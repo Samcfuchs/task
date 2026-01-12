@@ -30,8 +30,11 @@ def get_supa_engine():
     PORT = os.getenv("port")
     DBNAME = os.getenv("dbname")
 
+    #print(USER, PASSWORD, HOST, PORT, DBNAME)
+
     # Construct the SQLAlchemy connection string
     DATABASE_URL = f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
+
     #print(DATABASE_URL)
 
     # Create the SQLAlchemy engine
