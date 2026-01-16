@@ -23,7 +23,7 @@ const fCHARGE = -1.999;
 const fLINK = .1005;
 const fCENTER = 0.0000;
 const rCOLLISION = 20;
-const fWALL = 0.0001;
+const fWALL = 0.0002;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const COLORS = {
@@ -209,8 +209,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
   const [spawnHint, setSpawnHint] = useState<SpawnHint | null>(null);
 
 
-  let height = 800;
-  let width = 400;
+  const height = 500;
+  const width = 1400;
 
   const container = d3.select(containerRef.current)
   //console.debug('width', parseInt(container.style('width')));
@@ -235,11 +235,13 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    document.querySelector('#svg-container').scrollTo(400,0);
+
     //const container = d3.select(svg.node().parentNode);
     //const targetWidth = parseInt(container.style("width"));
 
-    width = parseInt(svg.style('width'))
-    height = parseInt(svg.style('height'))
+    //width = parseInt(svg.style('width'))
+    //height = parseInt(svg.style('height'))
 
     console.log(width, height);
 
@@ -345,8 +347,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     const svg = d3.select(svgRef.current)
 
-    width = +svg.attr('width');
-    height = +svg.attr('height');
+    //width = +svg.attr('width');
+    //height = +svg.attr('height');
 
     const tooltip = d3.select('div#tooltip')
     const viz_regions = svg.select('g#regions');
