@@ -12,7 +12,7 @@ lost on me.
     - [x] Add nodes
     - [x] "Add blocker" flow
     - [ ] Select newly added nodes
-- [ ] Add floating labels
+- [x] Add floating labels
 - [ ] Inspector
     - [x] Add markdown descriptions
     - [x] Design a cool checkbox
@@ -23,7 +23,7 @@ lost on me.
     - [ ] Make the checkbox do something
     - [ ] Make selection consistently highlight the correct node
     - [ ] Save changes more consistently
-- [ ] Horizontal panning (for mobile?)
+- [x] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
 - [ ] Live reactive
     - [ ] Zoom (horizontal)
@@ -36,7 +36,7 @@ lost on me.
         - [ ] Implement authentication
         - [ ] Support multi-user in database
 - [ ] Alpha deployment
-    - [ ] Create exploratory task tree
+    - [x] Create exploratory task tree
     - [ ] Splash screen
 
 ----
@@ -102,6 +102,11 @@ When BLOCKED node A is dragged into AVAILABLE:
 Note that node A may still be blocked if it depends on multiple incomplete
 nodes. It should stay blocked and return to the BLOCKED region. User repeats the
 previous action to remove more dependencies.
+
+I haven't yet added this because it's actually quite annoying to have the viz
+freeze every time a node is dragged. This can be avoided for now by always
+dragging into the "neutral" available zone and implementing this behavior would
+make that impossible.
 
 
 ## User Testing notes

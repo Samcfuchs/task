@@ -12,6 +12,8 @@ const COMPLETED_TASK_SETPOINT = 150;
 const GRAVITY_SETPOINT = 200;
 const BLOCKED_SETPOINT = 400;
 
+const [LABEL_OFFSET_X, LABEL_OFFSET_Y] = [20,-20]
+
 // Fence parameters
 const fFENCE = -16;
 const FENCE_DECAY = -30;
@@ -307,7 +309,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .attr('stroke', COLORS.node.stroke)
       .attr('fill', COLORS.node.fillGhost)
       .attr('opacity', COLORS.node.opacityGhost);
-
+    
 
 
     function makeRegion(y : number, height : number, fill : string) {
@@ -364,29 +366,43 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     simulation.nodes(nodes);
     simulation.force("link", d3.forceLink(links).id((d: Node) => d.id).strength(fLINK))
 
-    const node = svg.select('g#node')
-      .selectAll('rect')
+    const node = svg.select('g#node').selectAll('g')
+      //.selectAll('rect')
       .data(nodes, (d: Node) => d.task.id)
       .join(
         enter => {
 
           console.log("Enter has", enter.size(), "new objects");
-          return enter.append('rect')
+          const obj = enter.append('g');
+          obj.append('rect')
             .attr('width', nodeSize) 
             .attr('height', nodeSize) 
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
             .attr('fill', nodeColor)
             .attr('id', d => d.task.id)
-            .attr('x', d => (Math.random() * 400) - 200)
-            ;
+            .attr('x', d => (Math.random() * 400) - 200);
+
+          obj.append('text').text(d => d.task.title)
+            //.attr('stroke', '#fff')
+            //.attr('font-weight', '1')
+            .attr('font-family', 'Helvetica')
+            .attr('font-size', '20px')
+            .attr('stroke-weight', '0')
+            .attr('stroke', 'none')
+            //.attr('stroke-weight', '0.1')
+            .attr('fill', '#fff')
+            .attr('transform', d => `rotate(30, ${d.x}, ${d.y})`)
+          
+          return obj
+
 
         },
         update => {
-          update
+          update.select('rect')
             .attr('width', nodeSize) 
             .attr('height', nodeSize) 
-          update.transition().duration(200)
+          update.select('rect').transition().duration(200)
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
             .attr('fill', nodeColor);
@@ -413,6 +429,44 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       setSpawnHint(null)
     }
+
+    simulation.on('tick', () => {
+
+      node.select('rect')
+        .attr('x', d => constrain(d.x, -width/2, width/2) - nodeSize(d) / 2)
+        .attr('y', d => constrain(d.y, 0, height) - nodeSize(d)/2)
+
+      node.select('text')
+          .attr('x', d => constrain(d.x, -width/2, width/2) + LABEL_OFFSET_X)
+          .attr('y', d => constrain(d.y, 0, height)+LABEL_OFFSET_Y)
+          .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
+
+      link
+        .attr('x1', d => d.source.x)
+        .attr('x2', d => d.target.x)
+        .attr('y1', d => d.source.y)
+        .attr('y2', d => d.target.y)
+      
+      gradients
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y)
+    });
+
+    const distance = function(dx, dy) {
+      return 10000 / (Math.pow(dx, 2) + Math.pow(dy,2));
+    }
+
+    svg.on('mousemove', e => {
+      //console.debug('pointer', d3.pointer(e, this));
+      const [mx,my] = d3.pointer(e, this);
+
+      node.select('text')
+        //.attr('opacity', d => distance(d.x-mx, d.y-my))
+        //.text(d => distance(d.x-mx, d.y-my));
+    })
+
     
     function attachTooltipToMouse(event, d) {
       tooltip
@@ -456,13 +510,15 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     function selectNode(event?, d?) {
       //alert('Selected node');
+
+      node.selectAll('rect').attr('stroke', null).classed('selected', false);
+
       if (!event || !d) {
         selectTask(null)
         return;
       }
 
-      node.attr('stroke', null).classed('selected', false);
-      d3.select(this)
+      d3.select(this).select('rect')
         .attr('stroke', COLORS.node.strokeSelected)
         .classed('selected', true)
       selectTask(d.task.id)
@@ -475,24 +531,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     
 
     
-    simulation.on('tick', () => {
-      node
-        .attr('x', d => constrain(d.x, -width/2, width/2) - nodeSize(d) / 2)
-        .attr('y', d => constrain(d.y, 0, height) - nodeSize(d)/2)
-
-      link
-        .attr('x1', d => d.source.x)
-        .attr('x2', d => d.target.x)
-        .attr('y1', d => d.source.y)
-        .attr('y2', d => d.target.y)
-      
-      gradients
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y)
-    });
-
     function freezeSim() {
       nodes.forEach(n => {
         n.fx = n.x;

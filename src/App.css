@@ -58,6 +58,10 @@ svg {
   & g#node,g#ghost-node rect {
     cursor: pointer;
   }
+
+  & text {
+    pointer-events: none;
+  }
 }
 
 #inspect-pane {
