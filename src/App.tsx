@@ -64,7 +64,7 @@ const COLORS = {
 const SIM = {
   alphaTarget: 0,
   alphaDecay: 0.001,
-  ambientWarm: 0.2
+  ambientWarm: 0.8
 }
 
 type SpawnHint = {
@@ -556,7 +556,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     // Set the position attributes of links and nodes each time the simulation ticks.
     // Reheat the simulation when drag starts, and fix the subject position.
     function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(SIM.ambientWarm).restart();
+      if (!event.active) simulation.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
 
