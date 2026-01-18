@@ -55,6 +55,8 @@ lost on me.
     - [x] Layout
     - [ ] Design
     - [ ] Interact with viz
+- [ ] Undo/redo
+- [ ] Project categories
 - [ ] Visual sugar
     - [ ] Animate completion modal on isExternal
     - [ ] Improve the checkbox
@@ -134,4 +136,5 @@ make that impossible.
 13. Dependency view is weird.
 14. There should maybe be a system for auto-pruning dependencies.
 15. Some bug caused dependency lines to be drawn outside of the main area.
+
 

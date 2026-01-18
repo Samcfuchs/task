@@ -29,3 +29,4 @@ env
 *.db
 .env
 static
+authentication.md
