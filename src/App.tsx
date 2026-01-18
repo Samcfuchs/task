@@ -21,11 +21,11 @@ const FENCE_DECAY = -30;
 // Force strength
 //const FORCE_SCALAR = .05;
 const fGRAVITY = .0040;
-const fCHARGE = -1.999;
-const fLINK = .1005;
+const fCHARGE = -10.999;
+const fLINK = .0505;
 const fCENTER = 0.0000;
 const rCOLLISION = 20;
-const fWALL = 0.0002;
+const fWALL = 0.0003;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const COLORS = {
