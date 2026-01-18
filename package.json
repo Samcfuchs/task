@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --outDir ./static --emptyOutDir",
+    "build": "vite build --emptyOutDir",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "watch": "vite build --watch"
   },
   "dependencies": {
     "@types/d3": "^7.4.3",

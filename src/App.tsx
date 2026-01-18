@@ -26,7 +26,7 @@ const fCHARGE = -10.999;
 const fLINK = .0505;
 const fCENTER = 0.0000;
 const rCOLLISION = 20;
-const fWALL = 0.0003;
+const fWALL = 0.0006;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
 const COLORS = {
