@@ -433,12 +433,18 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     simulation.on('tick', () => {
 
       node.select('rect')
-        .attr('x', d => constrain(d.x, -width/2, width/2) - nodeSize(d) / 2)
-        .attr('y', d => constrain(d.y, 0, height) - nodeSize(d)/2)
+        .attr('x', d => {
+          d.x = constrain(d.x, -width/2, width/2)
+          return d.x - (nodeSize(d) / 2)
+        })
+        .attr('y', d => {
+          d.y = constrain(d.y, 0, height)
+          return d.y - (nodeSize(d) / 2)
+        })
 
       node.select('text')
-          .attr('x', d => constrain(d.x, -width/2, width/2) + LABEL_OFFSET_X)
-          .attr('y', d => constrain(d.y, 0, height)+LABEL_OFFSET_Y)
+          .attr('x', d => d.x + LABEL_OFFSET_X)
+          .attr('y', d => d.y + LABEL_OFFSET_Y)
           .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
 
       link
@@ -769,7 +775,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
 export default function App() {
 
-  const [tasks, setTasks] = useState<TaskMap>(testDict)
+  const [tasks, setTasks] = useState<TaskMap>(testDict['snapshot'])
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
 
   const [selectedTaskID, setSelectedTaskID] = useState<string>();

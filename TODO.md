@@ -12,6 +12,7 @@ lost on me.
     - [x] Add nodes
     - [x] "Add blocker" flow
     - [ ] Select newly added nodes
+    - [ ] Select nodes from task list
 - [x] Add floating labels
 - [ ] Inspector
     - [x] Add markdown descriptions
@@ -23,6 +24,9 @@ lost on me.
     - [ ] Make the checkbox do something
     - [ ] Make selection consistently highlight the correct node
     - [ ] Save changes more consistently
+    - [ ] Escape to task list
+- [ ] Fix nodes with no data???
+- [x] Fix links unaligned to constrained nodes
 - [x] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
 - [ ] Live reactive
