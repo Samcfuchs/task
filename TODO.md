@@ -24,7 +24,7 @@ lost on me.
     - [ ] Make the checkbox do something
     - [ ] Make selection consistently highlight the correct node
     - [ ] Save changes more consistently
-    - [ ] Escape to task list
+    - [x] Escape to task list
 - [ ] Fix nodes with no data???
 - [x] Fix links unaligned to constrained nodes
 - [x] Horizontal panning (for mobile?)
@@ -67,6 +67,7 @@ lost on me.
     - [ ] Allow more customization
         - [ ] Set color coding
         - [ ] Set size coding
+    - [ ] Improve escape to task list
 - [ ] Prohibit cyclical dependencies (not so important bc deps can be deleted)
 
 ## Notes on Forces

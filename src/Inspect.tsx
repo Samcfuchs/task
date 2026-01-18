@@ -50,11 +50,17 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
       <DependencyView key={'dep'+currentTask.id} task={currentTask} selectTask={selectTask} allTasks={tasks} onCommit={onCommit}/>
 
 
-      <input type='button' value='Delete' onClick={() => {
-        onCommit({id: currentTask.id, type: 'delete'});
-        selectTask(null);
-      }}/>
+      <div id='buttonbar'>
+        <button onClick={() => {
+          onCommit({id: currentTask.id, type: 'delete'});
+          selectTask(null);
+        }}>Delete</button>
+        
+        <button onClick={() => {
+          selectTask(null);
+        }}>Escape</button>
       
+      </div>
       
     </div>
   )
