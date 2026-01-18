@@ -5,6 +5,7 @@ import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent, generateID } from './Tasks.ts';
 import { Inspect, Tooltip, ListView} from './Inspect.tsx';
 
+import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
 import {testDict} from './data.js';
 
 // Fence locations
@@ -197,11 +198,12 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
  
 */
 
-function Sim({ tasks, onCommit, selectTask, hoverTask } : 
+function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } : 
   { tasks: TaskMap, 
     onCommit: (events: CommitEvent[]) => void, 
     selectTask: (id: string) => void, 
-    hoverTask: (id: string) => void } ) {
+    hoverTask: (id: string) => void, 
+    selectedTask : Task } ) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -236,14 +238,10 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
+    d3.select('#debug').selectAll('*').remove();
+    d3.select('#debug').append('p');
 
     document.querySelector('#svg-container').scrollTo(400,0);
-
-    //const container = d3.select(svg.node().parentNode);
-    //const targetWidth = parseInt(container.style("width"));
-
-    //width = parseInt(svg.style('width'))
-    //height = parseInt(svg.style('height'))
 
     console.log(width, height);
 
@@ -288,13 +286,13 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, -10, d => d.task.status != 'complete', -1))
       .force('centerLowerBound', forceY(BLOCKED_SETPOINT, -10, d => !d.task.isBlocked))
       .force("complete", forceY(COMPLETED_TASK_SETPOINT, fFENCE, d => d.task.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, -1))
+      .force("blocked", forceY(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, -1));
 
     simRef.current = sim;
 
     const link = svg.append('g')
       .attr('id', 'link')
-      .attr('stroke-width','2');
+      .attr('stroke-width', COLORS.edge.strokeWidth);
 
     const ghostLink = svg.append('g').attr('id', 'ghost-link')
 
@@ -327,6 +325,43 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const completedTaskRegion = makeRegion(0, COMPLETED_TASK_SETPOINT, COLORS.region.complete).attr('id','complete');
     const mainTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT, COLORS.region.available).attr('id', 'main');
     const blockedTaskRegion = makeRegion(BLOCKED_SETPOINT, height - BLOCKED_SETPOINT, COLORS.region.blocked).attr('id','blocked');
+
+
+
+    sim.on('tick', () => {
+
+      const node = svg.select('g#node').selectAll('g') 
+
+      node.select('rect')
+        .attr('x', d => {
+          d.x = constrain(d.x, -width/2, width/2)
+          return d.x - (nodeSize(d) / 2)
+        })
+        .attr('y', d => {
+          d.y = constrain(d.y, 0, height)
+          return d.y - (nodeSize(d) / 2)
+        })
+
+      node.select('text')
+          .attr('x', d => d.x + LABEL_OFFSET_X)
+          .attr('y', d => d.y + LABEL_OFFSET_Y)
+          .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
+
+      svg.select('g#link').selectAll('line')
+        .attr('x1', d => d.source.x)
+        .attr('x2', d => d.target.x)
+        .attr('y1', d => d.source.y)
+        .attr('y2', d => d.target.y)
+      
+      svg.select('defs').selectAll('linearGradient')
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y)
+      
+
+      d3.select('#debug').select('p').text(sim.alpha());
+    });
 
   }, [width, height]);
 
@@ -365,14 +400,13 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
     simulation.nodes(nodes);
     simulation.force("link", d3.forceLink(links).id((d: Node) => d.id).strength(fLINK))
+    simulation.alpha(SIM.ambientWarm).restart();
 
     const node = svg.select('g#node').selectAll('g')
       //.selectAll('rect')
       .data(nodes, (d: Node) => d.task.id)
       .join(
         enter => {
-
-          console.log("Enter has", enter.size(), "new objects");
           const obj = enter.append('g');
           obj.append('rect')
             .attr('width', nodeSize) 
@@ -409,10 +443,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
           return update
         }
         ,
-        exit => { 
-          console.log('Exit has', exit.size(), 'items:', exit)
-          exit.remove(); 
-        }
+        exit => { exit.remove(); }
       );
 
     if (spawnHint) {
@@ -429,36 +460,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
 
       setSpawnHint(null)
     }
-
-    simulation.on('tick', () => {
-
-      node.select('rect')
-        .attr('x', d => {
-          d.x = constrain(d.x, -width/2, width/2)
-          return d.x - (nodeSize(d) / 2)
-        })
-        .attr('y', d => {
-          d.y = constrain(d.y, 0, height)
-          return d.y - (nodeSize(d) / 2)
-        })
-
-      node.select('text')
-          .attr('x', d => d.x + LABEL_OFFSET_X)
-          .attr('y', d => d.y + LABEL_OFFSET_Y)
-          .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
-
-      link
-        .attr('x1', d => d.source.x)
-        .attr('x2', d => d.target.x)
-        .attr('y1', d => d.source.y)
-        .attr('y2', d => d.target.y)
-      
-      gradients
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y)
-    });
 
     const distance = function(dx, dy) {
       return 10000 / (Math.pow(dx, 2) + Math.pow(dy,2));
@@ -498,8 +499,10 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       .join('stop')
       .attr('offset', d => d.offset)
       .attr('stop-color', d => d.color)
+
     
-    node.on('click', selectNode);
+    // Per-node event handlers. This could be moved to the join.
+    node.on('click', (e,d) => selectTask(d.id));
     node.on('mouseover', hoverNode);
     node.on('mousemove', attachTooltipToMouse)
     node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
@@ -514,28 +517,10 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     };
     applyDragListener();
 
-    function selectNode(event?, d?) {
-      //alert('Selected node');
-
-      node.selectAll('rect').attr('stroke', null).classed('selected', false);
-
-      if (!event || !d) {
-        selectTask(null)
-        return;
-      }
-
-      d3.select(this).select('rect')
-        .attr('stroke', COLORS.node.strokeSelected)
-        .classed('selected', true)
-      selectTask(d.task.id)
-    }
-
     function hoverNode(event, d) {
       tooltip.style('visibility','visible');
       hoverTask(d.task.id);
     }
-    
-
     
     function freezeSim() {
       nodes.forEach(n => {
@@ -573,7 +558,8 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     const mainTaskRegion = viz_regions.select('#main');
     const blockedTaskRegion = viz_regions.select('#blocked');
 
-    viz_regions.on('click', e => selectNode());
+    //viz_regions.on('click', e => selectNode());
+    viz_regions.on('click', e => selectTask(null));
 
     // Update the subject (dragged node) position during drag.
     function dragged(event) {
@@ -652,7 +638,7 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
     // Unfix the subject position now that it’s no longer being dragged.
     function dragended(event,d) {
 
-      console.debug('Drag ended on node', d)
+      console.debug('Drag ended on node', d.id)
 
       //const targetNode = event.subject;
       const targetNode = d;
@@ -663,30 +649,15 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       event.subject.fx = null;
       event.subject.fy = null;
 
-      /*
-      if (!targetNode.task.isExternal) {
-        event.subject.fx = null;
-        event.subject.fy = null;
+      if (targetNode.y < COMPLETED_TASK_SETPOINT
+        && targetNode.task.status != 'complete') {
+
+        onCommit([{id: targetNode.id, type: 'complete'}])
       }
-        */
 
-      if (targetNode.y < COMPLETED_TASK_SETPOINT) {
-        //targetNode.status = 'complete';
-        //tasks[targetNode.id].status = 'complete';
-
-        if (targetNode.task.status != 'complete') {
-          onCommit([{id: targetNode.id, type: 'complete'}])
-        }
-
-      }
-      if (targetNode.y > COMPLETED_TASK_SETPOINT) {
-        //targetNode.status = 'not started';
-        //tasks[targetNode.id].status = 'not started';
-
-        if (targetNode.task.status == 'complete') {
-          onCommit([{id: targetNode.id, type: 'uncomplete'}])
-        }
-
+      if (targetNode.y > COMPLETED_TASK_SETPOINT 
+        && targetNode.task.status == 'complete') {
+        onCommit([{id: targetNode.id, type: 'uncomplete'}])
       }
 
       function cleanup() {
@@ -703,22 +674,21 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
         // Now we need to get a node id to choose as blocker
         
         // Select node
-        selectNode(event, d);
-        // Add "ghost node"
-
+        //selectNode(event, d);
+        selectTask(d.id);
         // Freeze simulation
         freezeSim();
         // Disable dragging
         node.on('.drag',null);
 
         node.on('click.block', (event, d) => {
-          console.debug("node a", targetNode)
-          console.debug("node b", d)
           onCommit([{id: targetNode.id, type: 'block', blockerId: d.id}])
           cleanup();
           //selectNode(event, d.id);
+          selectTask(d.id);
         })
 
+        // Add "ghost node"
         const [ghostX, ghostY] = [d.x, d.y-100]
         const ghostLine = tempLine(d.x,d.y,ghostX,ghostY)
         const ghostNode = tempNode(ghostX, ghostY)
@@ -740,8 +710,6 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
           console.debug('Resuming without changes');
           cleanup();
         });
-
-
       }
 
 
@@ -751,7 +719,20 @@ function Sim({ tasks, onCommit, selectTask, hoverTask } :
       //nodes = recalculate(nodes);
 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
+
+  useEffect(() => { // on selectedTask change
+    const node = d3.select(svgRef.current).select('g#node').selectAll('g')
+
+    node
+      .attr('stroke', null)
+      .classed('selected', false)
+      .filter(d => d.id === selectedTask)
+        .attr('stroke', COLORS.node.strokeSelected)
+        .classed('selected', true)
+
+  }, [selectedTask]);
 
 
   return (
@@ -807,27 +788,34 @@ export default function App() {
     })
   }
 
+  function selectTask(taskID) {
+    setSelectedTaskID(taskID);
+    selectNode
+  }
+
   return (
     <>
-      <Sim tasks={solvedTasks} selectTask={setSelectedTaskID} 
+      <Sim tasks={solvedTasks} selectTask={selectTask} 
         hoverTask={setHoveredTaskID}
-        onCommit={handleCommits}/>
+        onCommit={handleCommits}
+        selectedTask={selectedTaskID}/>
       
       {selectedTaskID == null ?
-        <ListView tasks={solvedTasks} selectTask={setSelectedTaskID} 
+        <ListView tasks={solvedTasks} selectTask={selectTask} 
           onCommit={handleCommit}/>
 
         :
 
-        <Inspect tasks={solvedTasks} selectTask={setSelectedTaskID} 
+        <Inspect tasks={solvedTasks} selectTask={selectTask} 
           taskID={selectedTaskID} 
           onCommit={handleCommit}/>
       }
 
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
+      <div id='debug'></div>
       <div>
-        <button onClick={save}>Save tasks to server</button>
-        <button onClick={load}>Load tasks from server</button>
+        <button onClick={save}> <BsFillCloudUploadFill /> </button>
+        <button onClick={load}> <BsFillCloudDownloadFill /> </button>
       </div>
     </>
   )

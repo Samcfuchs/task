@@ -262,9 +262,9 @@ svg.checkbox {
   height: 40px;
   width: 40px;
   background: none;
+  cursor: pointer;
 
   & .target {
-    cursor: pointer;
   }
 }
 

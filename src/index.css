@@ -70,3 +70,20 @@ button:focus-visible {
 }
 
 */
+
+div#debug {
+  position:absolute;
+  right: 0;
+  padding: 10px;
+  font-size: 1em;
+  border: 2px solid black;
+  opacity: 80%;
+  background-color: #1a1a1a;
+  width: 200px;
+  overflow-x: scroll;
+  visibility: hidden;
+
+  & p {
+
+  }
+}
