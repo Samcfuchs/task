@@ -12,7 +12,7 @@ lost on me.
     - [x] Add nodes
     - [x] "Add blocker" flow
     - [ ] Select newly added nodes
-    - [ ] Select nodes from task list
+    - [x] Select nodes from task list
 - [x] Add floating labels
 - [ ] Inspector
     - [x] Add markdown descriptions
@@ -21,8 +21,8 @@ lost on me.
     - [ ] Allow adding dependency from inspector
     - [x] Priority modal
     - [x] External modal
-    - [ ] Make the checkbox do something
-    - [ ] Make selection consistently highlight the correct node
+    - [x] Make the checkbox do something
+    - [x] Make selection consistently highlight the correct node
     - [ ] Save changes more consistently
     - [x] Escape to task list
 - [ ] Fix nodes with no data???

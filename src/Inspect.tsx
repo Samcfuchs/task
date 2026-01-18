@@ -15,16 +15,17 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
   }, [taskID]);
 
 
-
-  if (!currentTask) return (<></>);
-
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 
-      ? {id: currentTask.id, type: 'uncomplete'} 
-      : {id: currentTask.id, type: 'complete'};
+      ? {id: t.id, type: 'uncomplete'} 
+      : {id: t.id, type: 'complete'};
+
 
     return onCommit(e);
   }
+
+
+  if (!currentTask) return (<></>);
 
 
   function commitFn(commitType: string) {
@@ -36,7 +37,7 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
   return (
     <div id='inspect-pane'>
       <div id='bar'>
-        <CheckBox task={currentTask}/>
+        <CheckBox task={currentTask} onClick={toggleComplete}/>
         <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
         <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
         <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
@@ -58,7 +59,8 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
         
         <button onClick={() => {
           selectTask(null);
-        }}>Escape</button>
+        }}>Escape
+        </button>
       
       </div>
       
@@ -192,7 +194,7 @@ function DependencyView({task, selectTask, allTasks, onCommit}
   )
 }
 
-function CheckBox({task} : {task: Task}) {
+function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void}) {
 
   const radii = [100, 80, 60, 40, 20];
   //const 
@@ -209,24 +211,78 @@ function CheckBox({task} : {task: Task}) {
         width={r}
         x={cx -r/2}
         y={cy - r/2}
-        rx={task.isExternal ? 3 : r}
-        ry={task.isExternal ? 3 : r}
+        rx={task.isExternal ? 10 : r}
+        ry={task.isExternal ? 10 : r}
       ></rect>
   )
+  const getCross = r => (<g>
+    <line
+      x1={cx - r/2}
+      x2={cx + r/2}
+      y1={cy - r/2}
+      y2={cy + r/2}
+      stroke='#333'
+      strokeWidth='20'
+      strokeLinecap='round'
+    ></line>
+    <line
+      x1={cx + r/2}
+      x2={cx - r/2}
+      y1={cy - r/2}
+      y2={cy + r/2}
+      stroke='#333'
+      strokeWidth='20'
+      strokeLinecap='round'
+    ></line>
+    <line
+      x1={cx - r/2}
+      x2={cx + r/2}
+      y1={cy - r/2}
+      y2={cy + r/2}
+      stroke='white'
+      strokeWidth='6'
+      strokeLinecap='round'
+    ></line>
+    <line
+      x1={cx + r/2}
+      x2={cx - r/2}
+      y1={cy - r/2}
+      y2={cy + r/2}
+      stroke='white'
+      strokeWidth='6'
+      strokeLinecap='round'
+    ></line>
+  </g>)
   return (
 
-    <svg className='checkbox' viewBox="0 0 100 100">
-      {radii.slice(task.priority).map(getCircle)}
+    <svg className='checkbox' viewBox="0 0 100 100" onClick={(e) => {onClick(task); e.stopPropagation()}}>
+      {/*radii.slice(task.priority).map(getCircle)*/}
+      {getCircle(radii[1])}
+      { task.status == 'complete' ?
+        getCross(radii[1])
+        :
+        undefined
+      }
     </svg>
   )
 }
 
 export function ListView({tasks, selectTask, onCommit}) {
 
+  function toggleComplete(t : Task) {
+    const e : CommitEvent = t.status == 'complete' 
+      ? {id: t.id, type: 'uncomplete'} 
+      : {id: t.id, type: 'complete'};
+
+
+    return onCommit(e);
+  }
+
+
   function ListItem({task} : {task: Task}) {
     return (
       <div className='list-item' onClick={e => selectTask(task.id)}>
-        <CheckBox task={task}></CheckBox>
+        <CheckBox task={task} onClick={toggleComplete}></CheckBox>
         <span>{task.title}</span>
         <PriorityModal defaultValue={task.priority} 
           update={n => onCommit({id:task.id, type: 'setPriority', value: n})}/>
