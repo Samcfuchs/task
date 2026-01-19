@@ -40,6 +40,18 @@
 			"problemMatcher": [],
 			"label": "watch",
 			"detail": "vite build --emptyOutDir --watch"
+		},
+		{
+			"type": "npm",
+			"script": "dev",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"icon": {"id": "globe"},
+			"problemMatcher": [],
+			"label": "watch",
+			"detail": "npm run dev"
 		}
 	]
 }

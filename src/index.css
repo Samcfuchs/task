@@ -1,3 +1,5 @@
+@import 'tailwindcss';
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -46,6 +48,7 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
+  color: white;
 }
 button:hover {
   border-color: #646cff;
@@ -53,6 +56,13 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+.login-form, .signup-form {
+  margin-top: 100px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 400px;
 }
 
 /*
@@ -70,20 +80,3 @@ button:focus-visible {
 }
 
 */
-
-div#debug {
-  position:absolute;
-  right: 0;
-  padding: 10px;
-  font-size: 1em;
-  border: 2px solid black;
-  opacity: 80%;
-  background-color: #1a1a1a;
-  width: 200px;
-  overflow-x: scroll;
-  visibility: hidden;
-
-  & p {
-
-  }
-}

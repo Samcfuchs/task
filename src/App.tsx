@@ -790,7 +790,6 @@ export default function App() {
 
   function selectTask(taskID) {
     setSelectedTaskID(taskID);
-    selectNode
   }
 
   return (
