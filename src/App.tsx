@@ -2,8 +2,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
-import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent, generateID } from './Tasks.ts';
+import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
 import { Inspect, Tooltip, ListView} from './Inspect.tsx';
+import { generateID } from './Domain.ts'
 
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
 import {testDict} from './data.js';
@@ -198,12 +199,12 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
  
 */
 
-function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } : 
+export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } : 
   { tasks: TaskMap, 
     onCommit: (events: CommitEvent[]) => void, 
     selectTask: (id: string) => void, 
     hoverTask: (id: string) => void, 
-    selectedTask : Task } ) {
+    selectedTask : string } ) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -762,8 +763,9 @@ export default function App() {
   const [selectedTaskID, setSelectedTaskID] = useState<string>();
   const [hoveredTaskID, setHoveredTaskID] = useState<string>();
 
-  const save = saveTasks(solvedTasks);
-  const load = () => getTasks().then(data => setTasks(data.snapshot))
+  const save = () => saveTasks(solvedTasks);
+  const load = () => getTasks().then(data => setTasks(data))
+  //const load = () => setTasks(getTasks())
 
   
   //console.log("Initial task import:", tasks)

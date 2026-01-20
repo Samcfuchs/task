@@ -1,10 +1,10 @@
 import { type TaskMap } from "./App";
-import { nanoid } from "nanoid";
+import { getDefaultTask, getSnapshot, insertSnapshot } from "./Domain";
 
 
 export type Task = {
-  title:string,
   id: string,
+  title:string,
   description:string,
   priority: number,
   dependsOn: string[],
@@ -22,6 +22,7 @@ type Snapshot = {
 //const SERVER_PATH = "http://localhost:8000"
 const SERVER_PATH = ""
 
+/*
 export function saveTasks(tasks: TaskMap) {
   return async () => {
     const snapshot = {
@@ -49,6 +50,10 @@ export async function getTasks() : Promise<{snapshot : TaskMap}> {
     }
   }).then(res => res.json())
 }
+*/
+
+export const getTasks = getSnapshot;
+export const saveTasks = insertSnapshot;
 
 export function calculate(tasks : Record<string, Task>) : Record<string, Task> {
   const next: Record<string, Task> = {}
@@ -103,20 +108,6 @@ export type CommitEvent =
 | { id: string; type: 'setDescription', value: string }
 | { id: string; type: 'add', task?}
 | { id: string; type: 'delete' }
-
-export const generateID = () => nanoid(8);
-
-const getDefaultTask = (id : string | null) : Task => ({
-  title: "Untitled task",
-  id: id ?? generateID(),
-  description: "",
-  priority: 3,
-  dependsOn: [],
-  status: 'not started',
-  isBlocked: false,
-  isExternal: false
-});
-
 
 export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
   const t = prev[event.id];
