@@ -1,0 +1,142 @@
+@import '@/styles/global.css';
+@custom-variant dark (&:is(.dark *));
+
+#root {
+  max-width: 1280px;
+  margin: 0;
+  box-sizing: border-box;
+  /* box-sizing: content-box; */
+  margin: 0 auto;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+
+  & #svg-container {
+    flex: 3 0;
+    overflow-x: scroll;
+
+  }
+
+  & #pane {
+    flex: 1 1 20%;
+    position: static;
+    overflow-y: hidden;
+
+    &.expanded {
+      flex: 10 0;
+    }
+
+  }
+
+  & #buttonbar {
+    flex: 0 0 auto;
+
+  }
+}
+
+body {
+  width: 100%;
+}
+
+div#debug {
+  position:absolute;
+  right: 0;
+  padding: 10px;
+  font-size: 1em;
+  border: 2px solid black;
+  opacity: 80%;
+  background-color: #1a1a1a;
+  width: 200px;
+  overflow-x: scroll;
+  visibility: hidden;
+
+  & p {
+
+  }
+}
+
+#tooltip {
+  pointer-events: none;
+  position: absolute;
+  font-size: 18px;
+  padding: 5px;
+
+  &.hidden {
+    visibility: hidden;
+    display: none;
+  }
+
+  & div[data-slot='card-content'] {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 5px;
+
+    & span {
+      display:block;
+      flex: 1 0 auto;
+      margin: auto 0;
+    }
+  }
+
+
+}
+
+h2, h4 {
+  margin: 0;
+  text-align: left;
+
+}
+
+#svg-container svg {
+  display: block;
+  background-color: #222229;
+  /* width: 100%; */
+  /* height: 500px; */
+  height: 100%;
+
+  & .selected {
+    /* box-shadow: #fff 0 0 10px */
+    filter: drop-shadow(0 0 10px #666)
+  }
+
+  & g#node,g#ghost-node rect {
+    cursor: pointer;
+  }
+
+  & text {
+    pointer-events: none;
+  }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+#inspect-pane .dependencies {
+}
+
+.buttonbar {
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 10px;
+  background-color: var(--background);
+  svg {
+    display: inline-block;
+  }
+
+  & button {
+    margin: 0;
+  }
+
+  span {
+    margin: auto 0;
+  }
+}

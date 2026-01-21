@@ -25,23 +25,32 @@ lost on me.
     - [x] Make selection consistently highlight the correct node
     - [ ] Save changes more consistently
     - [x] Escape to task list
+- [ ] List view
+    - [ ] Filters
 - [ ] Fix nodes with no data???
 - [x] Fix links unaligned to constrained nodes
 - [x] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
 - [ ] Live reactive
     - [ ] Zoom (horizontal)
+    - [ ] Use space more efficiently on smaller screens
 - [ ] Backend
     - [x] Write data models
     - [x] Get save/load running
     - [x] Support cloud DB backend
     - [x] Serve assets from FastAPI
-    - [ ] Support multiple users
-        - [ ] Implement authentication
-        - [ ] Support multi-user in database
+    - [x] Support multiple users
+        - [x] Implement authentication
+        - [x] Support multi-user in database
 - [ ] Alpha deployment
     - [x] Create exploratory task tree
     - [ ] Splash screen
+- [ ] Bugs
+    - [ ] Stop list re-rendering spontaneously
+    - [ ] Impossible to delete deps from inspector in touch interface
+    - [ ] Layout breaks when opening inspector on mobile
+        - [ ] Either 1. cover the graph or 2. overflow-scroll the inspector
+    - [ ] Horizontal scroll still has some quirks
 
 ----
 
@@ -57,6 +66,13 @@ lost on me.
     - [ ] Interact with viz
 - [ ] Undo/redo
 - [ ] Project categories
+- [ ] UX
+    - [ ] Improve keyboard navigation
+    - [ ] Pipeline sandbox into account creation
+    - [ ] Enable horizontal scrolling
+    - [ ] Fix markdown styling
+    - [ ] Create expanded list view
+    - [ ] Add logout button
 - [ ] Visual sugar
     - [ ] Animate completion modal on isExternal
     - [ ] Improve the checkbox
@@ -69,8 +85,16 @@ lost on me.
     - [ ] Allow more customization
         - [ ] Set color coding
         - [ ] Set size coding
-    - [ ] Improve escape to task list
+    - [x] Improve escape to task list
+    - [ ] Anchored nodes
+    - [ ] Position text labels consistently relative to nodes
 - [ ] Prohibit cyclical dependencies (not so important bc deps can be deleted)
+- [ ] Backend
+    - [ ] Coalesce DomainEvents (maybe? not good for undo functions)
+    - [ ] Implement live updates from backend
+    - [ ] Build authoritative commit system
+    - [ ] Allow users to browse snapshots
+    - [ ] Merge CommitEvents with DomainEvents
 
 ## Notes on Forces
 

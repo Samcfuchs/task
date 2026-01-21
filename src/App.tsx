@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useRef, useEffect, useMemo } from 'react'
-import './App.css'
+import '@/styles/App.css';
 import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
 import { Inspect, Tooltip, ListView, InspectNew} from './Inspect.tsx';
@@ -9,6 +9,7 @@ import { generateID } from './Domain.ts'
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
+import { UserIcon } from 'lucide-react';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -802,6 +803,7 @@ export default function App({user}) {
     setSelectedTaskID(taskID);
   }
 
+  const [expanded, setExpanded] = useState<boolean>(false)
   return (
     <>
       <Sim tasks={solvedTasks} selectTask={selectTask} 
@@ -809,26 +811,36 @@ export default function App({user}) {
         onCommit={handleCommits}
         selectedTask={selectedTaskID}/>
       
-      {selectedTaskID == null ?
-        <ListView tasks={solvedTasks} selectTask={selectTask} 
-          onCommit={handleCommit}/>
-
-        :
-
-        <InspectNew tasks={solvedTasks} selectTask={selectTask} 
-          taskID={selectedTaskID} 
-          onCommit={handleCommit}/>
-      }
+      <Pane />
 
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       <div id='debug'></div>
-      <div id='buttonbar'>
-        <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
-        <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
-        <span style={{color:'white', margin:'auto'}}>{user}</span>
-      </div>
     </>
   )
+
+  function Pane() {
+
+    return (<>
+      <div id='pane' className={expanded ? 'expanded' : ''}>
+        {selectedTaskID == null ?
+          <ListView tasks={solvedTasks} selectTask={selectTask} 
+            onCommit={handleCommit}/>
+
+          :
+
+          <InspectNew tasks={solvedTasks} selectTask={selectTask} 
+            taskID={selectedTaskID} 
+            onCommit={handleCommit}/>
+        }
+      </div>
+      <div className='buttonbar'>
+        <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
+        <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
+        <Button><UserIcon /> {user} </Button>
+      </div></>
+    )
+  }
+
 }
 
 window.d3 = d3;

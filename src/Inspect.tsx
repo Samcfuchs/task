@@ -6,9 +6,8 @@ import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardContent, CardHeader } from '@/components/ui/card';
 import '@/styles/Inspect.css';
+import '@/styles/ListView.css';
 import { Toggle } from './components/ui/toggle.tsx';
-import { ImCross } from 'react-icons/im';
-
 
 export function Inspect({tasks, taskID, selectTask, onCommit} 
   : {tasks: TaskMap, taskID: string, selectTask : (string) => void, onCommit: (e: CommitEvent) => void}) {
@@ -200,11 +199,6 @@ function MarkdownWidget({defaultValue, onBlur, placeholderText="Description"}) {
   )
 }
 
-type ModalOption = {
-  text: string,
-  color: string,
-}
-
 function mod(n: number, m: number) {
   return ((n % m) + m) % m;
 }
@@ -256,7 +250,7 @@ function ExternalModal({defaultValue, update}) {
 }
 
 
-import { XIcon } from "lucide-react"
+import { CheckIcon, List, XIcon } from "lucide-react"
 function DependencyView({task, selectTask, allTasks, onCommit} 
   : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit}) {
 
@@ -349,9 +343,14 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
   </g>)
   return (
 
-    <svg className='checkbox stroke-(--foreground) fill-(--foreground) ' 
+    <svg className={'checkbox fill-(--foreground) '+ (task.isBlocked ? 'stroke-(--muted-foreground)' : 'stroke-(--foreground)') } 
       viewBox="0 0 100 100" 
-      onClick={(e) => {onClick(task); e.stopPropagation()}}>
+      onClick={(e) => {
+          if (!task.isBlocked) onClick(task); 
+          e.stopPropagation();
+        }
+      }
+    >
       {/*radii.slice(task.priority).map(getCircle)*/}
       {getCircle(radii[1])}
       { task.status == 'complete' ?
@@ -363,7 +362,9 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
   )
 }
 
-export function ListView({tasks, selectTask, onCommit}) {
+export function ListView({tasks, selectTask, onCommit} : 
+  { tasks : TaskMap, selectTask: (t:string) => void, onCommit: (c: CommitEvent) => void }
+) {
 
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 
@@ -377,7 +378,7 @@ export function ListView({tasks, selectTask, onCommit}) {
 
   function ListItem({task} : {task: Task}) {
     return (
-      <div className='list-item' onClick={e => selectTask(task.id)}>
+      <div className={'list-item ' } onClick={e => selectTask(task.id)}>
         <CheckBox task={task} onClick={toggleComplete}></CheckBox>
         <span>{task.title}</span>
         <PriorityModal defaultValue={task.priority} 
@@ -386,23 +387,51 @@ export function ListView({tasks, selectTask, onCommit}) {
     )
   }
 
-  function filter(task) : boolean {
-    return (task.status != 'complete');
-  }
+  const [excludeCompleted, setExcludeCompleted] = useState(true);
+  const [excludeBlocked, setExcludeBlocked] = useState(false);
 
   function sort(task1, task2) : number {
     return -(task2.priority - task1.priority);
   }
 
+  function filter(t: Task) {
+    if (excludeCompleted && t.status == 'complete') return false;
+    if (excludeBlocked && t.isBlocked) return false;
+    return true;
+  }
+
+  /*
+            pressed={currentTask.isExternal}
+            onPressedChange={commitFn('setIsExternal')}>External</Toggle>
+
+            */
   return (
     <div id='list-view'>
-      {
-        Object.values(tasks)
-          .filter(filter)
-          .sort(sort)
-          .map(t => <ListItem task={t}/>)
-      }
-
+      <div className='buttonbar'>
+        <span>Include:</span>
+        <Toggle  
+          pressed={excludeBlocked} 
+          className='data-[state=on]:bg-red-300 '
+          onPressedChange={setExcludeBlocked}>
+            { excludeBlocked ? <XIcon /> : <CheckIcon />}
+            blocked
+        </Toggle>
+        <Toggle
+          pressed={excludeCompleted}
+          className='data-[state=on]:bg-red-300'
+          onPressedChange={setExcludeCompleted}>
+            { excludeCompleted ? <XIcon /> : <CheckIcon />}
+            completed
+        </Toggle>
+      </div>
+      <div id='list-items'>
+        {
+          Object.values(tasks)
+            .filter(filter)
+            .sort(sort)
+            .map(t => <ListItem key={t.id} task={t}/>)
+        }
+      </div>
 
     </div>
   )

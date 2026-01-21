@@ -7,7 +7,7 @@ import { LoginForm } from "./components/login-form";
 import { SignUpForm } from "./components/sign-up-form";
 
 import App from "./App";
-import "./index.css";
+import "@/styles/index.css";
 //import { createClient } from '@/lib/supabase/client';
 import { supabase } from "@/lib/supabase/client";
 
