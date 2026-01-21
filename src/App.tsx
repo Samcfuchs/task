@@ -3,11 +3,12 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import './App.css'
 import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
-import { Inspect, Tooltip, ListView} from './Inspect.tsx';
+import { Inspect, Tooltip, ListView, InspectNew} from './Inspect.tsx';
 import { generateID } from './Domain.ts'
 
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
 import {testDict} from './data.js';
+import { Button } from './components/ui/button.tsx';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -807,16 +808,16 @@ export default function App() {
 
         :
 
-        <Inspect tasks={solvedTasks} selectTask={selectTask} 
+        <InspectNew tasks={solvedTasks} selectTask={selectTask} 
           taskID={selectedTaskID} 
           onCommit={handleCommit}/>
       }
 
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       <div id='debug'></div>
-      <div>
-        <button onClick={save}> <BsFillCloudUploadFill /> </button>
-        <button onClick={load}> <BsFillCloudDownloadFill /> </button>
+      <div id='buttonbar'>
+        <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
+        <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
       </div>
     </>
   )

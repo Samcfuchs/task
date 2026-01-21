@@ -1,3 +1,6 @@
+@import './styles/global.css';
+@custom-variant dark (&:is(.dark *));
+
 #root {
   max-width: 1280px;
   margin: 0;
@@ -82,7 +85,7 @@ svg {
 }
 
 #inspect-pane {
-  background-color: #333;
+  /* background-color: #333; */
   padding: 10px;
   border-radius: 5px;
   box-shadow: #333 0 0 20px;
@@ -159,29 +162,14 @@ svg {
 
 }
 
-.modal {
-  flex: 0 1;
-  padding: 5px 10px;
-  font-weight: bold;
-  border: 1px solid #fff;
-  border-radius: 5px;
-  font-size: .8em;
-  cursor: pointer;
-  user-select: none;
-  text-shadow:0 0 10px #000;
-  display: flex;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-
-  /* transition: border-radius .5s; */
-  transition: border-radius ease-in-out .2s;
-
-  &.priority {
-    flex-basis: 30px;
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
+/*
 button,input[type='button'] {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -194,7 +182,9 @@ button,input[type='button'] {
   transition: border-color 0.25s;
   margin: 10px;
 }
+  */
 
+/*
 .text-widget {
   font-weight: bold;
   background: #0000;
@@ -220,12 +210,14 @@ button,input[type='button'] {
   }
 
 }
+*/
 
+/*
 .markdown-widget {
-  /* height: 100px; */
+  height: 100px;
   border-radius: 5px;
   min-height: 50px;
-  /* max-height: 50px; */
+  max-height: 50px;
   border: 1px solid #555;
   cursor: text;
 
@@ -236,7 +228,7 @@ button,input[type='button'] {
 
   &:hover {
     transition: border .2s, background .2s;
-    /* border: 1px solid #999f; */
+    border: 1px solid #999f;
     background: #1a1a1aff;
   }
 
@@ -273,8 +265,10 @@ button,input[type='button'] {
   transition: border 1s, background 1s;
 
 }
+*/
 
 
+/*
 svg.checkbox {
   height: 40px;
   width: 40px;
@@ -284,62 +278,13 @@ svg.checkbox {
   & .target {
   }
 }
+  */
 
 #inspect-pane .dependencies {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: .8em;
-
-  &:not(:empty) {
-    margin: 20px 0;
-  }
-
-  /* padding: 20px 0; */
-  /* overflow-y: visible; */
-
-  & span {
-
-    border-radius: 5px;
-    background-color: #000;
-    padding: 10px;
-    position: relative;
-    cursor: pointer;
-
-
-    /* display: inline-block; */
-    display: inline-flex;
-    vertical-align: middle;
-    align-items: center;
-    /* margin: 20px 0; */
-
-
-    &:hover {
-      /* border: 10px solid #fff; */
-      outline: 1px solid #fff;
-
-      & button.delete {
-        visibility: visible;
-      }
-    }
-
-    & button.delete {
-      visibility: hidden;
-      background-color: red;
-      color: white;
-      position: absolute;
-      top: -20px;
-      right: -20px;
-      padding: 5px;
-
-    }
-
-  }
 }
 
 #buttonbar {
-  padding: 10px 0;
+  padding: 10px 10px;
 
   & button {
     margin: 0;
@@ -353,6 +298,7 @@ svg.checkbox {
   flex-wrap: nowrap;
   overflow-y: scroll;
   flex-basis: 20%;
+  padding: 0 10px;
 
   & .list-item {
 
@@ -368,10 +314,6 @@ svg.checkbox {
     display: flex;
     flex-direction: row;
     transition: background-color 0.2s;
-
-    & svg.checkbox {
-      height: 30px;
-    }
 
     span {
       margin: auto 0;
