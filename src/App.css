@@ -54,7 +54,7 @@ div#debug {
 
     & span {
       display:block;
-      flex: 1 1 300px;
+      flex: 1 0 auto;
       margin: auto 0;
     }
   }
