@@ -507,7 +507,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     node.on('click', (e,d) => selectTask(d.id));
     node.on('mouseover', hoverNode);
     node.on('mousemove', attachTooltipToMouse)
-    node.on('mouseout', () => tooltip.style('visibility', 'hidden'))
+    node.on('mouseout', () => tooltip.classed('hidden',true))
 
     //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
@@ -520,7 +520,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     applyDragListener();
 
     function hoverNode(event, d) {
-      tooltip.style('visibility','visible');
+      tooltip.classed('hidden', false);
       hoverTask(d.task.id);
     }
     
@@ -553,7 +553,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
 
-      tooltip.style('visibility','hidden');
+      tooltip.classed('hidden',true);
     }
 
     const completedTaskRegion = viz_regions.select('#complete');

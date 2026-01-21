@@ -145,12 +145,18 @@ export function Tooltip({tasks, taskID} : {tasks: TaskMap, taskID: string | unde
 
   if (taskID == undefined) return (<div id='tooltip'></div>)
   if (!tasks[taskID]) return (<div id='tooltip'></div>)
+  
+  const currentTask = tasks[taskID];
     
 
   return (
-    <div id='tooltip'>
-      <h1>{tasks[taskID].title}</h1>
-    </div>
+    <Card id='tooltip' className='tooltip'>
+      <CardContent>
+          <span>{tasks[taskID].title}</span>
+          
+          <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={null}/>
+      </CardContent>
+    </Card>
   )
 }
 

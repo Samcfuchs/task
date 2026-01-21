@@ -35,21 +35,30 @@ div#debug {
 }
 
 #tooltip {
-  border: 1px solid #555;
-  border-radius: 5px;
-  position: absolute;
-  margin: 0;
-  padding: 10px;
-
-  background-color: #fffe;
-  color: #333;
   pointer-events: none;
-  visibility: hidden;
+  position: absolute;
+  font-size: 18px;
+  padding: 5px;
 
-  & h1 {
-    font-size: small;
-    margin: 0;
+  &.hidden {
+    visibility: hidden;
+    display: none;
   }
+
+  & div[data-slot='card-content'] {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 5px;
+
+    & span {
+      display:block;
+      flex: 1 1 300px;
+      margin: auto 0;
+    }
+  }
+
+
 }
 
 h2, h4 {
@@ -285,6 +294,7 @@ svg.checkbox {
 
 #buttonbar {
   padding: 10px 10px;
+  background-color: #222229;
 
   & button {
     margin: 0;
@@ -299,9 +309,11 @@ svg.checkbox {
   overflow-y: scroll;
   flex-basis: 20%;
   padding: 0 10px;
+  background-color: #222229;
 
   & .list-item {
 
+    background-color: var(--background);
     border: 2px solid #444;
     padding: 5px;
     margin-top: 10px;
@@ -322,7 +334,7 @@ svg.checkbox {
 
     &:hover {
 
-      background-color: #5553;
+      background-color: var(--muted-foreground);
 
     }
   }
