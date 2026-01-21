@@ -505,9 +505,9 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     
     // Per-node event handlers. This could be moved to the join.
     node.on('click', (e,d) => selectTask(d.id));
-    node.on('mouseover', hoverNode);
-    node.on('mousemove', attachTooltipToMouse)
-    node.on('mouseout', () => d3.select('#tooltip').classed('hidden',true))
+    node.on('mouseover.a', hoverNode);
+    node.on('mousemove.a', attachTooltipToMouse)
+    node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
 
     //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
@@ -552,8 +552,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       if (!event.active) simulation.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
+      node.on('mouseover.a', null)
+      node.on('mousemove.a', null)
+      node.on('mouseout.a', null)
 
-      tooltip.classed('hidden',true);
+      d3.select('#tooltip').classed('hidden',true);
     }
 
     const completedTaskRegion = viz_regions.select('#complete');
@@ -719,6 +722,10 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       mainTaskRegion.attr('opacity', 0)
       blockedTaskRegion.attr('opacity', 0)
       //nodes = recalculate(nodes);
+
+      node.on('mouseover.a', hoverNode);
+      node.on('mousemove.a', attachTooltipToMouse)
+      node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
