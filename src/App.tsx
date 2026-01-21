@@ -478,7 +478,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
     
     function attachTooltipToMouse(event, d) {
-      tooltip
+      d3.select("#tooltip")
         .style('top', (event.y+10)+'px')
         .style('left', (event.x+10)+'px');
     }
@@ -507,7 +507,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     node.on('click', (e,d) => selectTask(d.id));
     node.on('mouseover', hoverNode);
     node.on('mousemove', attachTooltipToMouse)
-    node.on('mouseout', () => tooltip.classed('hidden',true))
+    node.on('mouseout', () => d3.select('#tooltip').classed('hidden',true))
 
     //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
@@ -520,7 +520,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     applyDragListener();
 
     function hoverNode(event, d) {
-      tooltip.classed('hidden', false);
+      d3.select("#tooltip").classed('hidden', false);
       hoverTask(d.task.id);
     }
     
@@ -756,7 +756,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
  
 */
 
-export default function App() {
+export default function App({user}) {
 
   const [tasks, setTasks] = useState<TaskMap>(testDict['snapshot'])
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
@@ -818,6 +818,7 @@ export default function App() {
       <div id='buttonbar'>
         <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
         <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
+        <span style={{color:'white', margin:'auto'}}>{user}</span>
       </div>
     </>
   )

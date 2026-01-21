@@ -29,7 +29,7 @@ export default function Site() {
           path="/app" 
           element={
             <AuthGate>
-              <App />
+              <App user={supabase.auth.getUser().then(d=> d.data.user.email)}/>
             </AuthGate>
           } 
         />
@@ -128,3 +128,5 @@ export default function Site() {
   }
 
 }
+
+window.supabase = supabase;
