@@ -813,17 +813,15 @@ export default function App({user}) {
   const [expanded, setExpanded] = useState<boolean>(false)
 
   const paneContent = (<>
-      <div id='pane' className={expanded ? 'expanded' : ''}>
         <Inspect tasks={solvedTasks} selectTask={selectTask} 
           taskID={selectedTaskID} 
           onCommit={handleCommit}/>
 
-        <div style={{height: '100%', visibility: selectedTaskID ? 'hidden' : 'visible' }}>
+        <div id='list-container' style={{flex: selectedTaskID ? '0 1 0' : undefined }}>
           <ListView tasks={solvedTasks} selectTask={selectTask} 
             onCommit={handleCommit}/>
         </div>
 
-      </div>
       <div className='buttonbar'>
         <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
         <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>

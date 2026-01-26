@@ -11,7 +11,7 @@ import { Toggle } from './components/ui/toggle.tsx';
 
 export function Inspect({tasks, taskID, selectTask, onCommit}) {
   const currentTask = tasks[taskID];
-  if (!currentTask) { return (<></>) }
+  if (!currentTask) { return (<div id='inspect-pane-new'></div>) }
 
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 
