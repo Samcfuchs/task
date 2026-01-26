@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 //import * as d3 from 'd3';
 import { type TaskMap } from './App.tsx'
 import { type CommitEvent, type Task } from './Tasks.ts';
@@ -9,76 +9,7 @@ import '@/styles/Inspect.css';
 import '@/styles/ListView.css';
 import { Toggle } from './components/ui/toggle.tsx';
 
-export function Inspect({tasks, taskID, selectTask, onCommit} 
-  : {tasks: TaskMap, taskID: string, selectTask : (string) => void, onCommit: (e: CommitEvent) => void}) {
-
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const currentTask = tasks[taskID];
-
-  useEffect(() => {
-    setIsEditing(false);
-  }, [taskID]);
-
-
-  function toggleComplete(t : Task) {
-    const e : CommitEvent = t.status == 'complete' 
-      ? {id: t.id, type: 'uncomplete'} 
-      : {id: t.id, type: 'complete'};
-
-
-    return onCommit(e);
-  }
-
-
-  if (!currentTask) return (<></>);
-
-
-  function commitFn(commitType: string) {
-    return (v) => onCommit({id: currentTask.id, type: commitType, value: v})
-  }
-
-  //console.log(isEditing);
-
-  return (
-    <div id='inspect-pane'>
-      <div id='bar'>
-        <CheckBox task={currentTask} onClick={toggleComplete}/>
-        <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
-        <ExternalModal key={'ext'+currentTask.id} defaultValue={currentTask.isExternal} update={commitFn('setIsExternal')}/>
-        <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
-      </div>
-
-      <MarkdownWidget key={'desc'+currentTask.id} 
-        defaultValue={currentTask.description} 
-        onBlur={commitFn('setDescription')} 
-      />
-
-      <DependencyView key={'dep'+currentTask.id} task={currentTask} selectTask={selectTask} allTasks={tasks} onCommit={onCommit}/>
-
-
-      <div id='buttonbar'>
-        <button onClick={() => {
-          onCommit({id: currentTask.id, type: 'delete'});
-          selectTask(null);
-        }}>Delete</button>
-        
-        <button onClick={() => {
-          selectTask(null);
-        }}>Escape
-        </button>
-
-        <Button variant='destructive' onClick={() => {
-          onCommit({id: currentTask.id, type: 'delete'});
-          selectTask(null);
-        }}>Delete</Button>
-      
-      </div>
-      
-    </div>
-  )
-}
-
-export function InspectNew({tasks, taskID, selectTask, onCommit}) {
+export function Inspect({tasks, taskID, selectTask, onCommit}) {
   const currentTask = tasks[taskID];
   if (!currentTask) { return (<></>) }
 
@@ -225,34 +156,10 @@ function PriorityModal({defaultValue, update}) {
       className='modal priority'
     ><span>{ '!'.repeat(6 - defaultValue) }</span></Button>
   )
-  
-  return (
-    <div className='modal priority button' 
-      onClick={e => update(clickIncrement(defaultValue)+1) }
-      style={{backgroundColor:priorityColors[defaultValue]}}
-    >
-      <span> { '!'.repeat(6 - defaultValue) } </span>
-    </div>
-  )
-}
-
-function ExternalModal({defaultValue, update}) {
-  return (
-    <div className='modal external button' 
-      onClick={e => update(!defaultValue) }
-      style={{
-        backgroundColor: (defaultValue ? '#55f' : '#222'),
-        borderRadius: defaultValue ? '5px' : '25px'
-
-      }}
-    ><span> External </span>
-    </div>
-  )
-
 }
 
 
-import { CheckIcon, List, XIcon } from "lucide-react"
+import { CheckIcon, XIcon } from "lucide-react"
 function DependencyView({task, selectTask, allTasks, onCommit} 
   : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit}) {
 
@@ -353,13 +260,8 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
         }
       }
     >
-      {/*radii.slice(task.priority).map(getCircle)*/}
       {getCircle(radii[1])}
-      { task.status == 'complete' ?
-        getCross(radii[1])
-        :
-        undefined
-      }
+      { task.status == 'complete' ?  getCross(radii[1]) : undefined }
     </svg>
   )
 }
@@ -367,6 +269,7 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
 export function ListView({tasks, selectTask, onCommit} : 
   { tasks : TaskMap, selectTask: (t:string) => void, onCommit: (c: CommitEvent) => void }
 ) {
+
 
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 

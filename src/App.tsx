@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import '@/styles/App.css';
 import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
-import { Inspect, Tooltip, ListView, InspectNew} from './Inspect.tsx';
+import { Inspect, Tooltip, ListView} from './Inspect.tsx';
 import { generateID } from './Domain.ts'
 
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
@@ -810,7 +810,7 @@ export default function App({user}) {
 
   const paneContent = (<>
       <div id='pane' className={expanded ? 'expanded' : ''}>
-        <InspectNew tasks={solvedTasks} selectTask={selectTask} 
+        <Inspect tasks={solvedTasks} selectTask={selectTask} 
           taskID={selectedTaskID} 
           onCommit={handleCommit}/>
 
