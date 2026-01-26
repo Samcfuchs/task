@@ -810,16 +810,15 @@ export default function App({user}) {
 
   const paneContent = (<>
       <div id='pane' className={expanded ? 'expanded' : ''}>
-        {selectedTaskID == null ?
+        <InspectNew tasks={solvedTasks} selectTask={selectTask} 
+          taskID={selectedTaskID} 
+          onCommit={handleCommit}/>
+
+        <div style={{display:  selectedTaskID ? 'none':'block'}}>
           <ListView tasks={solvedTasks} selectTask={selectTask} 
             onCommit={handleCommit}/>
+        </div>
 
-          :
-
-          <InspectNew tasks={solvedTasks} selectTask={selectTask} 
-            taskID={selectedTaskID} 
-            onCommit={handleCommit}/>
-        }
       </div>
       <div className='buttonbar'>
         <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>

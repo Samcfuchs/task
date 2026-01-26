@@ -80,6 +80,8 @@ export function Inspect({tasks, taskID, selectTask, onCommit}
 
 export function InspectNew({tasks, taskID, selectTask, onCommit}) {
   const currentTask = tasks[taskID];
+  if (!currentTask) { return (<></>) }
+
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 
       ? {id: t.id, type: 'uncomplete'} 
@@ -400,11 +402,7 @@ export function ListView({tasks, selectTask, onCommit} :
     return true;
   }
 
-  /*
-            pressed={currentTask.isExternal}
-            onPressedChange={commitFn('setIsExternal')}>External</Toggle>
 
-            */
   return (
     <div id='list-view'>
       <div className='buttonbar'>
