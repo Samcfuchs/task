@@ -45,12 +45,12 @@ const COLORS = {
   },
 
   border: {
-    complete: '#afa',
-    blocked: '#eee'
+    complete: '#599959',
+    blocked: '#666'
   },
 
   edge: {
-    strokeWidth: 2,
+    strokeWidth: 3,
     start: '#9f9',
     end: '#000',
     startGhost: '#9f9',
@@ -59,9 +59,13 @@ const COLORS = {
   },
 
   region: {
-    complete: '#9f9',
-    available: '#999',
-    blocked: '#666',
+    complete: '#daffda',
+    available: '#eee',
+    blocked: '#aaa',
+  },
+
+  text: {
+    fill: '#001'
   }
 }
 
@@ -428,7 +432,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
             .attr('stroke-weight', '0')
             .attr('stroke', 'none')
             //.attr('stroke-weight', '0.1')
-            .attr('fill', '#fff')
+            .attr('fill', COLORS.text.fill)
             .attr('transform', d => `rotate(30, ${d.x}, ${d.y})`)
           
           return obj
@@ -580,7 +584,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       if (targetNode.task.status != 'complete') {
 
         if (event.y < COMPLETED_TASK_SETPOINT) {
-          completedTaskRegion.attr('opacity', .2)
+          completedTaskRegion.attr('opacity', 1)
 
         } else {
           completedTaskRegion.attr('opacity', 0)
@@ -589,7 +593,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
       if (targetNode.task.status == 'complete') {
         if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
-          mainTaskRegion.attr('opacity', .2)
+          mainTaskRegion.attr('opacity', 1)
 
         } else {
           mainTaskRegion.attr('opacity', 0)
@@ -598,7 +602,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       }
 
       if (event.y > BLOCKED_SETPOINT) {
-        blockedTaskRegion.attr('opacity', .2)
+        blockedTaskRegion.attr('opacity', 1)
       } else {
         blockedTaskRegion.attr('opacity', 0)
       }
