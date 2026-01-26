@@ -814,7 +814,7 @@ export default function App({user}) {
           taskID={selectedTaskID} 
           onCommit={handleCommit}/>
 
-        <div style={{display:  selectedTaskID ? 'none':'block'}}>
+        <div style={{height: '100%', visibility: selectedTaskID ? 'hidden' : 'visible' }}>
           <ListView tasks={solvedTasks} selectTask={selectTask} 
             onCommit={handleCommit}/>
         </div>
