@@ -807,23 +807,8 @@ export default function App({user}) {
   }
 
   const [expanded, setExpanded] = useState<boolean>(false)
-  return (
-    <>
-      <Sim tasks={solvedTasks} selectTask={selectTask} 
-        hoverTask={setHoveredTaskID}
-        onCommit={handleCommits}
-        selectedTask={selectedTaskID}/>
-      
-      <Pane />
 
-      <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
-      <div id='debug'></div>
-    </>
-  )
-
-  function Pane() {
-
-    return (<>
+  const paneContent = (<>
       <div id='pane' className={expanded ? 'expanded' : ''}>
         {selectedTaskID == null ?
           <ListView tasks={solvedTasks} selectTask={selectTask} 
@@ -842,6 +827,25 @@ export default function App({user}) {
         <Button><UserIcon /> {user} </Button>
       </div></>
     )
+
+
+  return (
+    <>
+      <Sim tasks={solvedTasks} selectTask={selectTask} 
+        hoverTask={setHoveredTaskID}
+        onCommit={handleCommits}
+        selectedTask={selectedTaskID}/>
+      
+      {paneContent}
+
+      <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
+      <div id='debug'></div>
+    </>
+  )
+
+  function Pane() {
+
+    return (<></>)
   }
 
 }
