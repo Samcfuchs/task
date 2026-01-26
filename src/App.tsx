@@ -558,6 +558,8 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       node.on('mouseout.a', null)
 
       d3.select('#tooltip').classed('hidden',true);
+
+      node.filter(n => n.id == event.subject.id).raise();
     }
 
     const completedTaskRegion = viz_regions.select('#complete');
@@ -741,6 +743,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       .filter(d => d.id === selectedTask)
         .attr('stroke', COLORS.node.strokeSelected)
         .classed('selected', true)
+        .raise();
 
   }, [selectedTask]);
 
