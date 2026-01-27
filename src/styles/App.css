@@ -101,12 +101,17 @@ h2, h4 {
     filter: drop-shadow(0 0 10px #666)
   }
 
-  & g#node,g#ghost-node rect {
+  & g#node rect, g#ghost-node rect {
     cursor: pointer;
+    filter: drop-shadow(0 0 15px #00000066);
   }
 
   & text {
     pointer-events: none;
+    stroke: white;
+    stroke-width: 5;
+    paint-order: stroke;
+    stroke-linecap: round;
   }
 }
 
@@ -137,5 +142,9 @@ h2, h4 {
 
   span {
     margin: auto 0;
+  }
+
+  span.spacer {
+    flex: 1 0;
   }
 }

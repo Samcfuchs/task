@@ -6,10 +6,11 @@ import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEv
 import { Inspect, Tooltip, ListView} from './Inspect.tsx';
 import { generateID } from './Domain.ts'
 
-import { BsFillCloudUploadFill, BsFillCloudDownloadFill } from "react-icons/bs";
+import { BsFillCloudUploadFill, BsFillCloudDownloadFill, BsCheck, BsX } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
 import { UserIcon } from 'lucide-react';
+import { Toggle } from './components/ui/toggle.tsx';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
@@ -205,12 +206,16 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
  
 */
 
-export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } : 
+export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addDependencyTask, setAddDependencyTask, vizConfig } : 
   { tasks: TaskMap, 
     onCommit: (events: CommitEvent[]) => void, 
     selectTask: (id: string) => void, 
     hoverTask: (id: string) => void, 
-    selectedTask : string } ) {
+    selectedTask: string,
+    addDependencyTask: string,
+    setAddDependencyTask: (id:string) => void,
+    vizConfig: object
+  } ) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -218,6 +223,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
   const containerRef = useRef(null);
   const [spawnHint, setSpawnHint] = useState<SpawnHint | null>(null);
+  const nodeRef = useRef(null);
 
 
   const height = 500;
@@ -303,10 +309,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
     const ghostLink = svg.append('g').attr('id', 'ghost-link')
 
-    const node = svg.append('g')
+    nodeRef.current = svg.append('g')
       .attr('id', 'node')
       .attr('stroke-width', COLORS.node.strokeWidth)
-      .attr('stroke', COLORS.node.stroke);
+      .attr('stroke', COLORS.node.stroke)
+      .selectAll('g');
 
     const ghostNode = svg.append('g')
       .attr('id', 'ghost-node')
@@ -337,7 +344,8 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
     sim.on('tick', () => {
 
-      const node = svg.select('g#node').selectAll('g') 
+      //const node = svg.select('g#node').selectAll('g');
+      const node = nodeRef.current;
 
       node.select('rect')
         .attr('x', d => {
@@ -409,7 +417,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
     simulation.force("link", d3.forceLink(links).id((d: Node) => d.id).strength(fLINK))
     simulation.alpha(SIM.ambientWarm).restart();
 
-    const node = svg.select('g#node').selectAll('g')
+    nodeRef.current = svg.select('g#node').selectAll('g')
       //.selectAll('rect')
       .data(nodes, (d: Node) => d.task.id)
       .join(
@@ -454,7 +462,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
       );
 
     if (spawnHint) {
-      node.each((d,i) => {
+      nodeRef.current.each((d,i) => {
         if (d.id == spawnHint.id) {
           d.x = spawnHint.x;
           d.y = spawnHint.y;
@@ -467,26 +475,8 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
       setSpawnHint(null)
     }
+    const node = nodeRef.current;
 
-    const distance = function(dx, dy) {
-      return 10000 / (Math.pow(dx, 2) + Math.pow(dy,2));
-    }
-
-    svg.on('mousemove', e => {
-      //console.debug('pointer', d3.pointer(e, this));
-      const [mx,my] = d3.pointer(e, this);
-
-      node.select('text')
-        //.attr('opacity', d => distance(d.x-mx, d.y-my))
-        //.text(d => distance(d.x-mx, d.y-my));
-    })
-
-    
-    function attachTooltipToMouse(event, d) {
-      d3.select("#tooltip")
-        .style('top', (event.y+10)+'px')
-        .style('left', (event.x+10)+'px');
-    }
 
     const link = svg.select('g#link')
       .selectAll('line')
@@ -516,98 +506,133 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
 
     //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
-    function applyDragListener() {
-      node.call(d3.drag()
-            .on("start.d", dragstarted)
-            .on("drag.d", dragged)
-            .on("end.d", dragended));
-    };
     applyDragListener();
-
-    function hoverNode(event, d) {
-      d3.select("#tooltip").classed('hidden', false);
-      hoverTask(d.task.id);
-    }
-    
-    function freezeSim() {
-      nodes.forEach(n => {
-        n.fx = n.x;
-        n.fy = n.y;
-        n.vx = 0;
-        n.vy = 0;
-      })
-      simulation.alpha(0).alphaTarget(0);
-    }
-    function resumeSim() {
-      //node.attr('vx',0).attr('vy',0);
-      nodes.forEach(n => {
-        n.fx = null;
-        n.fy = null;
-        n.vx = 0;
-        n.vy = 0;
-      })
-      simulation.alpha(.99).alphaTarget(SIM.alphaTarget).restart();
-
-    }
-
-
-    // Set the position attributes of links and nodes each time the simulation ticks.
-    // Reheat the simulation when drag starts, and fix the subject position.
-    function dragstarted(event) {
-      if (!event.active) simulation.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-      node.on('mouseover.a', null)
-      node.on('mousemove.a', null)
-      node.on('mouseout.a', null)
-
-      d3.select('#tooltip').classed('hidden',true);
-
-      node.filter(n => n.id == event.subject.id).raise();
-    }
-
-    const completedTaskRegion = viz_regions.select('#complete');
-    const mainTaskRegion = viz_regions.select('#main');
-    const blockedTaskRegion = viz_regions.select('#blocked');
 
     //viz_regions.on('click', e => selectNode());
     viz_regions.on('click', e => selectTask(null));
 
-    // Update the subject (dragged node) position during drag.
-    function dragged(event) {
-      const targetNode = event.subject;
 
-      //constrain(d.x, -width/2, width/2)
-      event.subject.fx = constrain(event.x, -width/2, width/2)
-      event.subject.fy = constrain(event.y, 0, height);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
-      if (targetNode.task.status != 'complete') {
+  // Set the position attributes of links and nodes each time the simulation ticks.
+  // Reheat the simulation when drag starts, and fix the subject position.
+  function dragstarted(event) {
+    const node = d3.select('g#node').selectAll('g');
 
-        if (event.y < COMPLETED_TASK_SETPOINT) {
-          completedTaskRegion.attr('opacity', 1)
+    if (!event.active) simRef.current.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+    node.on('mouseover.a', null)
+    node.on('mousemove.a', null)
+    node.on('mouseout.a', null)
 
-        } else {
-          completedTaskRegion.attr('opacity', 0)
-        }
-      }
+    d3.select('#tooltip').classed('hidden',true);
 
-      if (targetNode.task.status == 'complete') {
-        if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
-          mainTaskRegion.attr('opacity', 1)
+    node.filter(n => n.id == event.subject.id).raise();
+  }
 
-        } else {
-          mainTaskRegion.attr('opacity', 0)
-        }
+  function dragged(event) {
+    const targetNode = event.subject;
+    const viz_regions = d3.select(svgRef.current).select('g#regions');
 
-      }
+    //constrain(d.x, -width/2, width/2)
+    event.subject.fx = constrain(event.x, -width/2, width/2)
+    event.subject.fy = constrain(event.y, 0, height);
 
-      if (event.y > BLOCKED_SETPOINT) {
-        blockedTaskRegion.attr('opacity', 1)
+    if (targetNode.task.status != 'complete') {
+
+      if (event.y < COMPLETED_TASK_SETPOINT) {
+        viz_regions.select('#complete').attr('opacity', 1)
+
       } else {
-        blockedTaskRegion.attr('opacity', 0)
+        viz_regions.select('#complete').attr('opacity', 0)
+      }
+    }
+
+    if (targetNode.task.status == 'complete') {
+      if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
+        viz_regions.select('#main').attr('opacity', 1)
+
+      } else {
+        viz_regions.select('#main').attr('opacity', 0)
       }
 
     }
+
+    if (event.y > BLOCKED_SETPOINT) {
+      viz_regions.select('#blocked').attr('opacity', 1)
+    } else {
+      viz_regions.select('#blocked').attr('opacity', 0)
+    }
+
+  }
+
+  function dragended(event,d) {
+
+    console.debug('Drag ended on node', d.id)
+
+    //const targetNode = event.subject;
+    const targetNode = d;
+
+    // Restore the target alpha so the simulation cools after dragging ends.
+    if (!event.active) simRef.current.alphaTarget(SIM.alphaTarget);
+
+    // Unfix the subject position now that it’s no longer being dragged.
+    event.subject.fx = null;
+    event.subject.fy = null;
+
+    if (targetNode.y < COMPLETED_TASK_SETPOINT
+      && targetNode.task.status != 'complete') {
+
+      onCommit([{id: targetNode.id, type: 'complete'}])
+    }
+
+    if (targetNode.y > COMPLETED_TASK_SETPOINT 
+      && targetNode.task.status == 'complete') {
+      onCommit([{id: targetNode.id, type: 'uncomplete'}])
+    }
+
+    if (targetNode.y > BLOCKED_SETPOINT) {
+      setAddDependencyTask(targetNode.id);
+    }
+
+
+    const viz_regions = d3.select(svgRef.current).select('g#regions');
+    viz_regions.select('#complete').attr('opacity', 0)
+    viz_regions.select('#main').attr('opacity', 0)
+    viz_regions.select('#blocked').attr('opacity', 0)
+    //nodes = recalculate(nodes);
+
+    const node = nodeRef.current;
+    node.on('mouseover.a', hoverNode);
+    node.on('mousemove.a', attachTooltipToMouse)
+    node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
+
+  }
+
+  function applyDragListener() {
+    d3.select('g#node').selectAll('g').call( d3.drag()
+      .on("start.d", dragstarted)
+      .on("drag.d", dragged)
+      .on("end.d", dragended));
+  };
+/*
+ 
+  █████╗ ██████╗ ██████╗     ██████╗ ███████╗██████╗ ███████╗███╗   ██╗██████╗ ███████╗███╗   ██╗ ██████╗██╗   ██╗    ███████╗███████╗███████╗███████╗ ██████╗████████╗
+ ██╔══██╗██╔══██╗██╔══██╗    ██╔══██╗██╔════╝██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝████╗  ██║██╔════╝╚██╗ ██╔╝    ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝
+ ███████║██║  ██║██║  ██║    ██║  ██║█████╗  ██████╔╝█████╗  ██╔██╗ ██║██║  ██║█████╗  ██╔██╗ ██║██║      ╚████╔╝     █████╗  █████╗  █████╗  █████╗  ██║        ██║   
+ ██╔══██║██║  ██║██║  ██║    ██║  ██║██╔══╝  ██╔═══╝ ██╔══╝  ██║╚██╗██║██║  ██║██╔══╝  ██║╚██╗██║██║       ╚██╔╝      ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   
+ ██║  ██║██████╔╝██████╔╝    ██████╔╝███████╗██║     ███████╗██║ ╚████║██████╔╝███████╗██║ ╚████║╚██████╗   ██║       ███████╗██║     ██║     ███████╗╚██████╗   ██║   
+ ╚═╝  ╚═╝╚═════╝ ╚═════╝     ╚═════╝ ╚══════╝╚═╝     ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝   ╚═╝       ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   
+                                                                                                                                                                       
+ 
+*/
+
+  useEffect(() => {
+    const svg = d3.select(svgRef.current);
+    const node = svg.select('g#node').selectAll('g')
+    const viz_regions = svg.select('g#regions');
 
     /**
      * Spawn a temporary node in a new layer as a touch target
@@ -617,126 +642,129 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
      * @param children 
      * @returns d3 selection of the temporary node
      */
-    function tempNode(x,y, children: string[] = []) {
 
-      const r = nodeSize(null);
-      console.log('node selection:', node.size());
-
-      const n = svg.select('g#ghost-node').append('rect')
-          .attr('width', r)
-          .attr('height', r) 
-          .attr('rx', r) 
-          .attr('ry', r)
-          .attr('x',x - r/2)
-          .attr('y',y - r/2)
-          .attr('opacity', COLORS.node.opacityGhost)
-      
-      console.debug(n)
-      return n
-    }
-
-    function tempLine(x1,y1,x2,y2) {
-      svg.select('g#ghost-link').append('line')
-        .attr('stroke', COLORS.edge.start)
-        .attr('stroke-width', COLORS.edge.strokeWidth)
-        .attr('x1', x1)
-        .attr('y1', y1)
-        .attr('x2', x2)
-        .attr('y2', y2+nodeSize(null)/2)
+    if (!addDependencyTask) {
+      // Do cleanup
+      cleanup();
+      return
     }
 
 
-    // Restore the target alpha so the simulation cools after dragging ends.
-    // Unfix the subject position now that it’s no longer being dragged.
-    function dragended(event,d) {
+    selectTask(addDependencyTask)
 
-      console.debug('Drag ended on node', d.id)
-
-      //const targetNode = event.subject;
-      const targetNode = d;
-
-      if (!event.active) simulation.alphaTarget(SIM.alphaTarget);
-
-      // Un-fix node position
-      event.subject.fx = null;
-      event.subject.fy = null;
-
-      if (targetNode.y < COMPLETED_TASK_SETPOINT
-        && targetNode.task.status != 'complete') {
-
-        onCommit([{id: targetNode.id, type: 'complete'}])
-      }
-
-      if (targetNode.y > COMPLETED_TASK_SETPOINT 
-        && targetNode.task.status == 'complete') {
-        onCommit([{id: targetNode.id, type: 'uncomplete'}])
-      }
-
-      function cleanup() {
-        svg.select('g#ghost-link').selectAll('*').remove();
-        svg.select('g#ghost-node').selectAll('*').remove();
-        node.on('click.block', null);
-        viz_regions.on('click.resume', null);
-        resumeSim();
-        applyDragListener();
-
-      }
-
-      if (targetNode.y > BLOCKED_SETPOINT) {
-        // Now we need to get a node id to choose as blocker
-        
-        // Select node
-        //selectNode(event, d);
-        selectTask(d.id);
-        // Freeze simulation
-        freezeSim();
-        // Disable dragging
-        node.on('.drag',null);
-
-        node.on('click.block', (event, d) => {
-          onCommit([{id: targetNode.id, type: 'block', blockerId: d.id}])
-          cleanup();
-          //selectNode(event, d.id);
-          selectTask(d.id);
-        })
-
-        // Add "ghost node"
-        const [ghostX, ghostY] = [d.x, d.y-100]
-        const ghostLine = tempLine(d.x,d.y,ghostX,ghostY)
-        const ghostNode = tempNode(ghostX, ghostY)
-        ghostNode.on('click', () => { 
-          const newID = generateID();
-          onCommit([
-            { id: newID, type: 'add' }, 
-            { id: targetNode.id, type: 'block', blockerId: newID }
-          ]);
-
-          setSpawnHint({id: newID, x:d.x, y:d.y - 100});
-          //selectNode(event, d.id);
-
-          cleanup();
-        })
-        
-        viz_regions.on('click.resume', (event, d) => {
-          // kindly cancel
-          console.debug('Resuming without changes');
-          cleanup();
-        });
-      }
+    console.debug("Adding dependency for", addDependencyTask);
+    // enter "Add dependency" mode
+    freezeSim();
+    node.on('.drag', null) // remove drag listeners
 
 
-      completedTaskRegion.attr('opacity', 0)
-      mainTaskRegion.attr('opacity', 0)
-      blockedTaskRegion.attr('opacity', 0)
-      //nodes = recalculate(nodes);
+    node.on('click.block', (event, d) => {
+      onCommit([{id: addDependencyTask, type: 'block', blockerId: d.id}])
+      cleanup();
+      //selectNode(event, d.id);
+      selectTask(d.id);
+    })
 
-      node.on('mouseover.a', hoverNode);
-      node.on('mousemove.a', attachTooltipToMouse)
-      node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
+    const childNode : Node = simDataRef.current.nodes.find(d => d.id == addDependencyTask);
+    console.debug(childNode);
 
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
+
+    // Add "ghost node"
+    const [ghostX, ghostY] = [childNode.x, childNode.y-100]
+    const ghostLine = tempLine(childNode.x, childNode.y,ghostX,ghostY)
+    console.debug(childNode.id, childNode.x, childNode.y, childNode.fx, childNode.fy);
+    const ghostNode = tempNode(ghostX, ghostY)
+    ghostNode.on('click', () => { 
+      const newID = generateID();
+      onCommit([
+        { id: newID, type: 'add' }, 
+        { id: childNode.id, type: 'block', blockerId: newID }
+      ]);
+
+      setSpawnHint({id: newID, x: ghostX, y: ghostY});
+      //selectNode(event, d.id);
+
+      cleanup();
+    })
+    
+    viz_regions.on('click.resume', (event, d) => {
+      // kindly cancel
+      console.debug('Resuming without changes');
+      cleanup();
+    });
+
+  }, [addDependencyTask])
+
+  function resumeSim() {
+    simDataRef.current.nodes.forEach(n => {
+      n.fx = null;
+      n.fy = null;
+      n.vx = 0;
+      n.vy = 0;
+    })
+    simRef.current.alpha(.99).alphaTarget(SIM.alphaTarget).restart();
+  }
+
+  function freezeSim() {
+    simDataRef.current.nodes.forEach(n => {
+      n.fx = n.x;
+      n.fy = n.y;
+      n.vx = 0;
+      n.vy = 0;
+    })
+    simRef.current.alpha(0).alphaTarget(0);
+  }
+
+  function tempNode(x,y, children: string[] = []) {
+
+    const r = nodeSize(null);
+    //console.log('node selection:', node.size());
+
+    const n = d3.select(svgRef.current).select('g#ghost-node').append('rect')
+        .attr('width', r)
+        .attr('height', r) 
+        .attr('rx', r) 
+        .attr('ry', r)
+        .attr('x',x - r/2)
+        .attr('y',y - r/2)
+        .attr('opacity', COLORS.node.opacityGhost)
+    
+    console.debug(n)
+    return n
+  }
+
+  function tempLine(x1,y1,x2,y2) {
+    d3.select(svgRef.current).select('g#ghost-link').append('line')
+      .attr('stroke', COLORS.edge.start)
+      .attr('stroke-width', COLORS.edge.strokeWidth)
+      .attr('x1', x1)
+      .attr('y1', y1)
+      .attr('x2', x2)
+      .attr('y2', y2+nodeSize(null)/2)
+  }
+
+  function hoverNode(event, d) {
+    d3.select("#tooltip").classed('hidden', false);
+    hoverTask(d.task.id);
+  }
+
+  function cleanup() {
+    d3.select(svgRef.current).select('g#ghost-link').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#ghost-node').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#node').selectAll('g').on('click.block', null);
+    d3.select('g#regions').on('click.resume', null);
+    resumeSim();
+    applyDragListener();
+
+  }
+
+  function attachTooltipToMouse(event, d) {
+    d3.select("#tooltip")
+      .style('top', (event.y+10)+'px')
+      .style('left', (event.x+10)+'px');
+  }
+
+  // Update the subject (dragged node) position during drag.
 
   useEffect(() => { // on selectedTask change
     const node = d3.select(svgRef.current).select('g#node').selectAll('g')
@@ -750,6 +778,25 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask } :
         .raise();
 
   }, [selectedTask]);
+
+
+/*
+ 
+ ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗██╗ ██████╗ ███╗   ██╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║
+██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗██║   ██║██████╔╝███████║   ██║   ██║██║   ██║██╔██╗ ██║
+██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║   ██║██║   ██║██║╚██╗██║
+╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║
+╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+                                                                                                                
+ 
+*/
+
+  useEffect(() => {
+    console.debug("Config updating", vizConfig)
+
+    d3.select(svgRef.current).selectAll('g#node g text').style('visibility', vizConfig.showLabels ? undefined : 'hidden');
+  }, [vizConfig])
 
 
   return (
@@ -778,10 +825,15 @@ export default function App({user}) {
 
   const [selectedTaskID, setSelectedTaskID] = useState<string>();
   const [hoveredTaskID, setHoveredTaskID] = useState<string>();
+  const [addDependencyTaskID, setAddDependencyTaskID] = useState<string>();
 
   const save = () => saveTasks(solvedTasks);
   const load = () => getTasks().then(data => setTasks(data))
   //const load = () => setTasks(getTasks())
+
+  const [vizConfig, setVizConfig] = useState({
+    showLabels: true
+  })
 
   
   //console.log("Initial task import:", tasks)
@@ -812,32 +864,35 @@ export default function App({user}) {
 
   const [expanded, setExpanded] = useState<boolean>(false)
 
-  const paneContent = (<>
-        <Inspect tasks={solvedTasks} selectTask={selectTask} 
-          taskID={selectedTaskID} 
-          onCommit={handleCommit}/>
-
-        <div id='list-container' style={{flex: selectedTaskID ? '0 1 0' : undefined }}>
-          <ListView tasks={solvedTasks} selectTask={selectTask} 
-            onCommit={handleCommit}/>
-        </div>
-
+  return (
+    <>
       <div className='buttonbar'>
         <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
         <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
+        <Toggle onClick={e => setVizConfig({...vizConfig, showLabels: !vizConfig.showLabels})}>
+          { vizConfig.showLabels ? <BsCheck /> : <BsX /> }
+        Labels</Toggle>
+        <span className='spacer'></span>
         <Button><UserIcon /> {user} </Button>
-      </div></>
-    )
+      </div>
 
-
-  return (
-    <>
       <Sim tasks={solvedTasks} selectTask={selectTask} 
         hoverTask={setHoveredTaskID}
         onCommit={handleCommits}
-        selectedTask={selectedTaskID}/>
+        selectedTask={selectedTaskID}
+        addDependencyTask={addDependencyTaskID}
+        setAddDependencyTask={setAddDependencyTaskID}
+        vizConfig={vizConfig}/>
       
-      {paneContent}
+      <Inspect tasks={solvedTasks} selectTask={selectTask} 
+        taskID={selectedTaskID} 
+        onCommit={handleCommit}/>
+
+      <div id='list-container' style={{flex: selectedTaskID ? '0 1 0' : undefined }}>
+        <ListView tasks={solvedTasks} selectTask={selectTask} 
+          onCommit={handleCommit}/>
+      </div>
+
 
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
       <div id='debug'></div>
