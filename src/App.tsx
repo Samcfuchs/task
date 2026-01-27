@@ -224,6 +224,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   const containerRef = useRef(null);
   const [spawnHint, setSpawnHint] = useState<SpawnHint | null>(null);
   const nodeRef = useRef(null);
+  let currentClickIsDrag = false;
 
 
   const height = 500;
@@ -233,6 +234,79 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   //console.debug('width', parseInt(container.style('width')));
 
   //let width = parseInt(container.style('width'));
+  function freezeSim() {
+    console.debug("Sim freezing");
+    simDataRef.current.nodes.forEach(n => {
+      n.fx = n.x;
+      n.fy = n.y;
+      n.vx = 0;
+      n.vy = 0;
+    })
+    simRef.current.alpha(0).alphaTarget(0);
+  }
+
+  function resumeSim() {
+    console.debug("Sim resuming");
+    simDataRef.current.nodes.forEach(n => {
+      n.fx = null;
+      n.fy = null;
+      n.vx = 0;
+      n.vy = 0;
+    })
+    simRef.current.alpha(.99).alphaTarget(SIM.alphaTarget).restart();
+  }
+
+
+  function tempNode(x,y, children: string[] = []) {
+
+    const r = nodeSize(null);
+    //console.log('node selection:', node.size());
+
+    const n = d3.select(svgRef.current).select('g#ghost-node').append('rect')
+        .attr('width', r)
+        .attr('height', r) 
+        .attr('rx', r) 
+        .attr('ry', r)
+        .attr('x',x - r/2)
+        .attr('y',y - r/2)
+        .attr('opacity', COLORS.node.opacityGhost)
+        .raise();
+    
+    return n
+  }
+
+  function tempLine(x1,y1,x2,y2) {
+    d3.select(svgRef.current).select('g#ghost-link').append('line')
+      .attr('stroke', COLORS.edge.start)
+      .attr('stroke-width', COLORS.edge.strokeWidth)
+      .attr('x1', x1)
+      .attr('y1', y1)
+      .attr('x2', x2)
+      .attr('y2', y2+nodeSize(null)/2)
+      .raise();
+  }
+
+  function hoverNode(event, d) {
+    d3.select("#tooltip").classed('hidden', false);
+    hoverTask(d.task.id);
+  }
+
+  function cleanup() {
+    d3.select(svgRef.current).select('g#ghost-link').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#ghost-node').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#node').selectAll('g').on('click.block', null);
+    d3.select('g#regions').on('click.resume', null);
+    resumeSim();
+    applyDragListener();
+
+  }
+
+  function attachTooltipToMouse(event, d) {
+    d3.select("#tooltip")
+      .style('top', (event.y+10)+'px')
+      .style('left', (event.x+10)+'px');
+  }
+
 
 /*
  
@@ -517,7 +591,8 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
   // Set the position attributes of links and nodes each time the simulation ticks.
   // Reheat the simulation when drag starts, and fix the subject position.
-  function dragstarted(event) {
+  function dragstarted(event, d) {
+    console.debug("Drag began on node", d.id)
     const node = d3.select('g#node').selectAll('g');
 
     if (!event.active) simRef.current.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
@@ -530,11 +605,13 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     d3.select('#tooltip').classed('hidden',true);
 
     node.filter(n => n.id == event.subject.id).raise();
+    currentClickIsDrag = false;
   }
 
   function dragged(event) {
     const targetNode = event.subject;
     const viz_regions = d3.select(svgRef.current).select('g#regions');
+    currentClickIsDrag = true;
 
     //constrain(d.x, -width/2, width/2)
     event.subject.fx = constrain(event.x, -width/2, width/2)
@@ -570,6 +647,10 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
   function dragended(event,d) {
 
+    if (!currentClickIsDrag) {
+      console.log("Calling dragended although this was actually a click");
+    }
+
     console.debug('Drag ended on node', d.id)
 
     //const targetNode = event.subject;
@@ -593,7 +674,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
       onCommit([{id: targetNode.id, type: 'uncomplete'}])
     }
 
-    if (targetNode.y > BLOCKED_SETPOINT) {
+    if (targetNode.y > BLOCKED_SETPOINT && currentClickIsDrag) {
       setAddDependencyTask(targetNode.id);
     }
 
@@ -645,6 +726,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
     if (!addDependencyTask) {
       // Do cleanup
+      console.debug("addDependencyTask was set to", addDependencyTask, "so we are cleaning up");
       cleanup();
       return
     }
@@ -658,21 +740,21 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     node.on('.drag', null) // remove drag listeners
 
 
-    node.on('click.block', (event, d) => {
-      onCommit([{id: addDependencyTask, type: 'block', blockerId: d.id}])
-      cleanup();
-      //selectNode(event, d.id);
-      selectTask(d.id);
-    })
+    node.filter(d => d.id != addDependencyTask)
+      .on('click.block', (event, d) => {
+        console.debug("In add dep mode, we saw click.block on", d.id);
+        onCommit([{id: addDependencyTask, type: 'block', blockerId: d.id}])
+        cleanup();
+        selectTask(d.id);
+        setAddDependencyTask(null);
+      })
 
-    const childNode : Node = simDataRef.current.nodes.find(d => d.id == addDependencyTask);
-    console.debug(childNode);
+    const childNode = simDataRef.current.nodes.find(d => d.id == addDependencyTask);
 
 
     // Add "ghost node"
     const [ghostX, ghostY] = [childNode.x, childNode.y-100]
     const ghostLine = tempLine(childNode.x, childNode.y,ghostX,ghostY)
-    console.debug(childNode.id, childNode.x, childNode.y, childNode.fx, childNode.fy);
     const ghostNode = tempNode(ghostX, ghostY)
     ghostNode.on('click', () => { 
       const newID = generateID();
@@ -682,94 +764,28 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
       ]);
 
       setSpawnHint({id: newID, x: ghostX, y: ghostY});
-      //selectNode(event, d.id);
 
       cleanup();
+      setAddDependencyTask(null);
+      selectTask(newID);
     })
     
     viz_regions.on('click.resume', (event, d) => {
       // kindly cancel
       console.debug('Resuming without changes');
       cleanup();
+      setAddDependencyTask(null);
     });
 
+    console.debug("sim entered add dependency mode");
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addDependencyTask])
-
-  function resumeSim() {
-    simDataRef.current.nodes.forEach(n => {
-      n.fx = null;
-      n.fy = null;
-      n.vx = 0;
-      n.vy = 0;
-    })
-    simRef.current.alpha(.99).alphaTarget(SIM.alphaTarget).restart();
-  }
-
-  function freezeSim() {
-    simDataRef.current.nodes.forEach(n => {
-      n.fx = n.x;
-      n.fy = n.y;
-      n.vx = 0;
-      n.vy = 0;
-    })
-    simRef.current.alpha(0).alphaTarget(0);
-  }
-
-  function tempNode(x,y, children: string[] = []) {
-
-    const r = nodeSize(null);
-    //console.log('node selection:', node.size());
-
-    const n = d3.select(svgRef.current).select('g#ghost-node').append('rect')
-        .attr('width', r)
-        .attr('height', r) 
-        .attr('rx', r) 
-        .attr('ry', r)
-        .attr('x',x - r/2)
-        .attr('y',y - r/2)
-        .attr('opacity', COLORS.node.opacityGhost)
-    
-    console.debug(n)
-    return n
-  }
-
-  function tempLine(x1,y1,x2,y2) {
-    d3.select(svgRef.current).select('g#ghost-link').append('line')
-      .attr('stroke', COLORS.edge.start)
-      .attr('stroke-width', COLORS.edge.strokeWidth)
-      .attr('x1', x1)
-      .attr('y1', y1)
-      .attr('x2', x2)
-      .attr('y2', y2+nodeSize(null)/2)
-  }
-
-  function hoverNode(event, d) {
-    d3.select("#tooltip").classed('hidden', false);
-    hoverTask(d.task.id);
-  }
-
-  function cleanup() {
-    d3.select(svgRef.current).select('g#ghost-link').selectAll('*').remove();
-    d3.select(svgRef.current).select('g#ghost-node').selectAll('*').remove();
-    d3.select(svgRef.current).select('g#node').selectAll('g').on('click.block', null);
-    d3.select('g#regions').on('click.resume', null);
-    resumeSim();
-    applyDragListener();
-
-  }
-
-  function attachTooltipToMouse(event, d) {
-    d3.select("#tooltip")
-      .style('top', (event.y+10)+'px')
-      .style('left', (event.x+10)+'px');
-  }
 
   // Update the subject (dragged node) position during drag.
 
   useEffect(() => { // on selectedTask change
-    const node = d3.select(svgRef.current).select('g#node').selectAll('g')
-
-    node
+    nodeRef.current
       .attr('stroke', null)
       .classed('selected', false)
       .filter(d => d.id === selectedTask)
@@ -886,7 +902,10 @@ export default function App({user}) {
       
       <Inspect tasks={solvedTasks} selectTask={selectTask} 
         taskID={selectedTaskID} 
-        onCommit={handleCommit}/>
+        onCommit={handleCommit}
+        addDependencyTask={addDependencyTaskID}
+        setAddDependencyTask={setAddDependencyTaskID}
+      />
 
       <div id='list-container' style={{flex: selectedTaskID ? '0 1 0' : undefined }}>
         <ListView tasks={solvedTasks} selectTask={selectTask} 
@@ -895,14 +914,9 @@ export default function App({user}) {
 
 
       <Tooltip tasks={tasks} taskID={hoveredTaskID}/>
-      <div id='debug'></div>
+      <div id='debug'>{addDependencyTaskID}</div>
     </>
   )
-
-  function Pane() {
-
-    return (<></>)
-  }
 
 }
 

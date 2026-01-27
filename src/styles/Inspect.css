@@ -158,9 +158,22 @@ svg.checkbox {
     font-size: .8em;
   }
 
-  & p {
+  & * {
+  }
+
+  ul {
+    list-style-type: disc; 
+    padding-left: 20px;
+  }
+
+  ol {
+    padding-left: 20px;
+    list-style-type: decimal;
+  }
+
+  & p, li {
+    font-size: 14px;
     margin: 5px;
-    font-size: .8em;
   }
 
   &.editing {
@@ -175,11 +188,11 @@ button.delete {
 
   padding: 5px;
   z-index: 999;
+  height: 25px;
+  width: 25px;
 
   & svg {
     background: none;
-    height: 20px;
-    width: 20px;
   }
 
 }

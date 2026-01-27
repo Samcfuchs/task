@@ -11,22 +11,22 @@ lost on me.
 - [x] Viz interactions
     - [x] Add nodes
     - [x] "Add blocker" flow
-    - [ ] Select newly added nodes
+    - [x] Select newly added nodes
     - [x] Select nodes from task list
 - [x] Add floating labels
 - [ ] Inspector
     - [x] Add markdown descriptions
     - [x] Design a cool checkbox
     - [x] Modifiable dependency view
-    - [ ] Allow adding dependency from inspector
+    - [x] Allow adding dependency from inspector
     - [x] Priority modal
     - [x] External modal
     - [x] Make the checkbox do something
     - [x] Make selection consistently highlight the correct node
-    - [ ] Save changes more consistently
+    - [x] Save changes more consistently
     - [x] Escape to task list
-- [ ] List view
-    - [ ] Filters
+- [x] List view
+    - [x] Filters
 - [ ] Fix nodes with no data???
 - [x] Fix links unaligned to constrained nodes
 - [x] Horizontal panning (for mobile?)
@@ -46,11 +46,12 @@ lost on me.
     - [x] Create exploratory task tree
     - [ ] Splash screen
 - [ ] Bugs
-    - [ ] Stop list re-rendering spontaneously
+    - [x] Stop list re-rendering spontaneously
     - [ ] Impossible to delete deps from inspector in touch interface
+        - [ ] Which actually makes it completely impossible to do
     - [ ] Layout breaks when opening inspector on mobile
         - [ ] Either 1. cover the graph or 2. overflow-scroll the inspector
-    - [ ] Horizontal scroll still has some quirks
+    - [x] Horizontal scroll still has some quirks
 
 ----
 
@@ -69,10 +70,19 @@ lost on me.
 - [ ] UX
     - [ ] Improve keyboard navigation
     - [ ] Pipeline sandbox into account creation
-    - [ ] Enable horizontal scrolling
-    - [ ] Fix markdown styling
-    - [ ] Create expanded list view
-    - [ ] Add logout button
+    - [x] Enable horizontal scrolling
+    - [ ] Inspector
+        - [x] Fix markdown styling
+    - [ ] List view
+        - [ ] Create expanded list view
+    - [ ] Viz
+        - [ ] Fix: ghost node covers nodes above, making them unselectable
+        - [ ] Optionally hide child nodes
+        - [ ] Autoscroll selected task into view
+    - [ ] Toolbar
+        - [ ] Coalesce account controls under account button
+        - [ ] Add logout button
+        - [ ] 
 - [ ] Visual sugar
     - [ ] Animate completion modal on isExternal
     - [ ] Improve the checkbox
@@ -87,14 +97,18 @@ lost on me.
         - [ ] Set size coding
     - [x] Improve escape to task list
     - [ ] Anchored nodes
-    - [ ] Position text labels consistently relative to nodes
+    - [x] Position text labels consistently relative to nodes
 - [ ] Prohibit cyclical dependencies (not so important bc deps can be deleted)
+- [ ] Bugs
+    - [x] Selecting a blocked node causes the graph to be re-calculated
 - [ ] Backend
     - [ ] Coalesce DomainEvents (maybe? not good for undo functions)
     - [ ] Implement live updates from backend
     - [ ] Build authoritative commit system
     - [ ] Allow users to browse snapshots
     - [ ] Merge CommitEvents with DomainEvents
+    - [ ] Remember node positions
+    - [ ] Remember viz settings & filters
 
 ## Notes on Forces
 

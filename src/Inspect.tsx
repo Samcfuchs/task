@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 //import * as d3 from 'd3';
 import { type TaskMap } from './App.tsx'
 import { type CommitEvent, type Task } from './Tasks.ts';
@@ -9,7 +9,7 @@ import '@/styles/Inspect.css';
 import '@/styles/ListView.css';
 import { Toggle } from './components/ui/toggle.tsx';
 
-export function Inspect({tasks, taskID, selectTask, onCommit}) {
+export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask, setAddDependencyTask}) {
   const currentTask = tasks[taskID];
   if (!currentTask) { return (<div id='inspect-pane-new'></div>) }
 
@@ -26,6 +26,7 @@ export function Inspect({tasks, taskID, selectTask, onCommit}) {
   }
 
 
+  
   return (
     <Card className="test" id='inspect-pane-new'>
       <CardHeader className='card-header'>
@@ -44,8 +45,7 @@ export function Inspect({tasks, taskID, selectTask, onCommit}) {
         defaultValue={currentTask.description} 
         onBlur={commitFn('setDescription')} 
       />
-      <DependencyView task={currentTask} allTasks={tasks} selectTask={selectTask} onCommit={onCommit} />
-
+      <DependencyView task={currentTask} allTasks={tasks} selectTask={selectTask} onCommit={onCommit} setAddDependencyTaskID={setAddDependencyTask}/>
 
       </CardContent>
 
@@ -101,6 +101,7 @@ function TextWidget({defaultValue, onBlur}) {
   )
 }
 
+//TODO : Re-engineer dynamic markdown widget
 function MarkdownWidget({defaultValue, onBlur, placeholderText="Description"}) {
   const [editing, setEditing] = useState(false)
 
@@ -159,26 +160,30 @@ function PriorityModal({defaultValue, update}) {
 }
 
 
-import { CheckIcon, XIcon } from "lucide-react"
-function DependencyView({task, selectTask, allTasks, onCommit} 
-  : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit}) {
+import { CheckIcon, PlusIcon, XIcon } from "lucide-react"
+function DependencyView({task, selectTask, allTasks, onCommit, setAddDependencyTaskID} 
+  : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit, setAddDependencyTaskID: (string) => void}) {
 
   function DependencyWidget({parent} : {parent : Task}) {
+
     return (
       <span onClick={e => selectTask(parent.id)}>{parent.title}
       <Button className='delete rounded-full' size='icon' 
         onClick={e => {
           e.stopPropagation();
-          onCommit({id:task.id, type:'unblock', blockerId:parent.id})}
-      }>
+          onCommit({id:task.id, type:'unblock', blockerId:parent.id})
+        }}
+      >
 
-        <XIcon size='sm' strokeWidth='5' height='2px'/>
+        <XIcon strokeWidth='2' />
       
       
-      </Button></span>
+      </Button>
+      </span>
         
     )
   }
+
 
   return (
     <div className='dependencies'>
@@ -187,6 +192,9 @@ function DependencyView({task, selectTask, allTasks, onCommit}
           return  <DependencyWidget parent={allTasks[parentID]}/>
         })
       }
+      <Button className='rounded-full' size='icon' onClick={e => setAddDependencyTaskID(task.id)} >
+        <PlusIcon/>
+      </Button>
     </div>
   )
 }
