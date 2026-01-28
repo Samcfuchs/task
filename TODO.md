@@ -49,7 +49,7 @@ lost on me.
     - [x] Impossible to delete deps from inspector in touch interface
     - [x] Layout breaks when opening inspector on mobile
     - [x] Horizontal scroll still has some quirks
-    - [ ] New accounts not able to post snapshots
+    - [x] New accounts not able to post snapshots
 
 ----
 

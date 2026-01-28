@@ -919,7 +919,7 @@ export default function App({user}) {
             </DropdownMenuGroup>
             <DropdownMenuGroup>
               <DropdownMenuLabel>Sync</DropdownMenuLabel>
-              <DropdownMenuItem onClick={e => console.log("upload")}>
+              <DropdownMenuItem onClick={save}>
                 <CloudUpload stroke='black'/>
                 Upload
               </DropdownMenuItem>
