@@ -49,7 +49,8 @@ div#debug {
   background-color: #1a1a1a;
   width: 200px;
   overflow-x: scroll;
-  visibility: hidden;
+  color: white;
+  /* visibility: hidden; */
 
   & p {
 

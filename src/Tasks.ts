@@ -21,37 +21,6 @@ type Snapshot = {
 
 //const SERVER_PATH = "http://localhost:8000"
 const SERVER_PATH = ""
-
-/*
-export function saveTasks(tasks: TaskMap) {
-  return async () => {
-    const snapshot = {
-      schemaVersion: 1,
-      tasks
-    }
-
-    await fetch(SERVER_PATH + "/api/save", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        //'Accept': 'application/json',
-      },
-      body: JSON.stringify(snapshot)
-    });
-  };
-}
-
-export async function getTasks() : Promise<{snapshot : TaskMap}> {
-  return fetch(SERVER_PATH + "/api/load", { 
-    method: "GET",
-    headers: {
-      //"Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "true"
-    }
-  }).then(res => res.json())
-}
-*/
-
 export const getTasks = getSnapshot;
 export const saveTasks = insertSnapshot;
 
@@ -111,7 +80,8 @@ export type CommitEvent =
 
 export function processIntent(event: CommitEvent, prev : TaskMap) : TaskMap {
   const t = prev[event.id];
-  console.debug('Previous has task ', event.id, ' : ', t);
+  console.debug('Previous has task', event.id, ' : ', t);
+  console.debug('There is event', event);
   switch (event.type) {
     case 'complete': {
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 //import * as d3 from 'd3';
 import { type TaskMap } from './App.tsx'
 import { type CommitEvent, type Task } from './Tasks.ts';
@@ -8,9 +8,10 @@ import { Card, CardFooter, CardContent, CardHeader } from '@/components/ui/card'
 import '@/styles/Inspect.css';
 import '@/styles/ListView.css';
 import { Toggle } from './components/ui/toggle.tsx';
+import Select from 'react-select';
 
 export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask, setAddDependencyTask}) {
-  const currentTask = tasks[taskID];
+  const currentTask : Task = tasks[taskID];
   if (!currentTask) { return (<div id='inspect-pane-new'></div>) }
 
   function toggleComplete(t : Task) {
@@ -24,6 +25,38 @@ export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask,
   function commitFn(commitType: string) {
     return (v) => onCommit({id: currentTask.id, type: commitType, value: v})
   }
+
+
+  const selectOptions = Object.values(tasks).map(t => ({
+    value: t.id,
+    label: t.title
+  }))
+
+
+  function handleChange(newDeps, change) {
+    switch (change.action) {
+      case 'select-option':
+        onCommit({id: taskID, type: 'block', blockerId:change.option.value})
+        break
+      case 'remove-value':
+        onCommit({id: taskID, type: 'unblock', blockerId:change.removedValue.value})
+        break
+      case 'pop-value':
+        onCommit({id: taskID, type: 'unblock', blockerId:change.removedValue.value})
+        break
+      case 'deselect-option':
+        onCommit({id: taskID, type: 'unblock', blockerId:change.option.value})
+        break
+      default:
+        console.log(newDeps, change);
+    }
+
+
+  }
+  
+  
+
+  //let defaultValues = selectOptions.filter(o => currentTask.dependsOn.includes(o.value))
 
 
   
@@ -41,12 +74,21 @@ export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask,
 
       </CardHeader>
       <CardContent>
+      <Label htmlFor='select'>Dependencies</Label>
+      <Select options={selectOptions} 
+        key={taskID}
+        defaultValue={selectOptions.filter(o => currentTask.dependsOn.includes(o.value)) }
+        closeMenuOnSelect={false}
+        onChange={handleChange}
+        isMulti
+        styles={{menu: (baseStyles, state) => ({...baseStyles, fontSize: '.7em'})}}
+      />
+
       <MarkdownWidget key={'desc'+currentTask.id} 
         defaultValue={currentTask.description} 
         onBlur={commitFn('setDescription')} 
       />
-      <DependencyView task={currentTask} allTasks={tasks} selectTask={selectTask} onCommit={onCommit} setAddDependencyTaskID={setAddDependencyTask}/>
-
+      {/* <DependencyView task={currentTask} allTasks={tasks} selectTask={selectTask} onCommit={onCommit} setAddDependencyTaskID={setAddDependencyTask}/> */}
       </CardContent>
 
       <CardFooter>
@@ -106,7 +148,10 @@ function MarkdownWidget({defaultValue, onBlur, placeholderText="Description"}) {
   const [editing, setEditing] = useState(false)
 
   return (
-    <div className={'markdown-widget' + (editing ? ' editing' : '')}  onClick={e => setEditing(true)}>
+    <div className={'markdown-widget' + (editing ? ' editing' : '')}  
+      onClick={e => setEditing(true)}
+      tabIndex={0}
+      onFocus={e=>setEditing(true)}>
       { editing ?
         <textarea name="description" 
           defaultValue={defaultValue}
@@ -125,7 +170,7 @@ function MarkdownWidget({defaultValue, onBlur, placeholderText="Description"}) {
             <Markdown>{defaultValue}</Markdown>
           :
           
-          <p>{placeholderText}</p>
+            <p>{placeholderText}</p>
       }
     
     </div>
@@ -161,6 +206,7 @@ function PriorityModal({defaultValue, update}) {
 
 
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react"
+import { Label } from './components/ui/label.tsx';
 function DependencyView({task, selectTask, allTasks, onCommit, setAddDependencyTaskID} 
   : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit, setAddDependencyTaskID: (string) => void}) {
 
