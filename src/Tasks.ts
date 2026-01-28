@@ -20,7 +20,7 @@ type Snapshot = {
 }
 
 //const SERVER_PATH = "http://localhost:8000"
-const SERVER_PATH = ""
+//const SERVER_PATH = ""
 export const getTasks = getSnapshot;
 export const saveTasks = insertSnapshot;
 

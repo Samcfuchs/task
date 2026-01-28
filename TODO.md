@@ -32,8 +32,7 @@ lost on me.
 - [x] Horizontal panning (for mobile?)
 - [ ] Actually do some mobile testing
 - [ ] Live reactive
-    - [ ] Zoom (horizontal)
-    - [ ] Use space more efficiently on smaller screens
+    - [x] Use space more efficiently on smaller screens
 - [ ] Backend
     - [x] Write data models
     - [x] Get save/load running
@@ -47,11 +46,10 @@ lost on me.
     - [ ] Splash screen
 - [ ] Bugs
     - [x] Stop list re-rendering spontaneously
-    - [ ] Impossible to delete deps from inspector in touch interface
-        - [ ] Which actually makes it completely impossible to do
-    - [ ] Layout breaks when opening inspector on mobile
-        - [ ] Either 1. cover the graph or 2. overflow-scroll the inspector
+    - [x] Impossible to delete deps from inspector in touch interface
+    - [x] Layout breaks when opening inspector on mobile
     - [x] Horizontal scroll still has some quirks
+    - [ ] New accounts not able to post snapshots
 
 ----
 
@@ -63,12 +61,12 @@ lost on me.
 - [x] List view
     - [x] Implement de-select node
     - [x] Layout
-    - [ ] Design
-    - [ ] Interact with viz
+    - [x] Design
+    - [x] Interact with viz
 - [ ] Undo/redo
 - [ ] Project categories
 - [ ] UX
-    - [ ] Improve keyboard navigation
+    - [x] Improve keyboard navigation
     - [ ] Pipeline sandbox into account creation
     - [x] Enable horizontal scrolling
     - [ ] Inspector
@@ -76,13 +74,16 @@ lost on me.
     - [ ] List view
         - [ ] Create expanded list view
     - [ ] Viz
+        - [ ] Play/pause button
+        - [ ] Zoom (horizontal)
         - [ ] Fix: ghost node covers nodes above, making them unselectable
         - [ ] Optionally hide child nodes
         - [ ] Autoscroll selected task into view
+        - [ ] Anchored nodes
     - [ ] Toolbar
-        - [ ] Coalesce account controls under account button
-        - [ ] Add logout button
-        - [ ] 
+        - [x] Coalesce account controls under account button
+        - [x] Add logout button
+        - [ ] Make the logout button work
 - [ ] Visual sugar
     - [ ] Animate completion modal on isExternal
     - [ ] Improve the checkbox
@@ -91,12 +92,12 @@ lost on me.
     - [ ] Node trashcan
     - [ ] Label regions
     - [ ] Highlight connected nodes on selection
-    - [ ] Make the floating labels look good
+    - [x] Make the floating labels look good
+    - [ ] Cast drop-shadows on background only (not on nodes)
     - [ ] Allow more customization
         - [ ] Set color coding
         - [ ] Set size coding
     - [x] Improve escape to task list
-    - [ ] Anchored nodes
     - [x] Position text labels consistently relative to nodes
 - [ ] Prohibit cyclical dependencies (not so important bc deps can be deleted)
 - [ ] Bugs

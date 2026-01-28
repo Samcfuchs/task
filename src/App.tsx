@@ -9,12 +9,21 @@ import { generateID } from './Domain.ts'
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill, BsCheck, BsX } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
-import { UserIcon } from 'lucide-react';
+import { CloudDownload, CloudUpload, Tag, UserIcon, LogOutIcon, ChevronDown } from 'lucide-react';
 import { Toggle } from './components/ui/toggle.tsx';
+
+import { 
+  DropdownMenu, 
+  DropdownMenuCheckboxItem, 
+  DropdownMenuContent, DropdownMenuGroup, 
+  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuItem, DropdownMenuLabel 
+} from '@/components/ui/dropdown-menu.tsx';
+import { supabase } from './lib/supabase/client.ts';
 
 // Fence locations
 const COMPLETED_TASK_SETPOINT = 150;
-const GRAVITY_SETPOINT = 200;
+const GRAVITY_SETPOINT = 150;
 const BLOCKED_SETPOINT = 400;
 
 const [LABEL_OFFSET_X, LABEL_OFFSET_Y] = [20,-20]
@@ -25,7 +34,7 @@ const FENCE_DECAY = -30;
 
 // Force strength
 //const FORCE_SCALAR = .05;
-const fGRAVITY = .0040;
+const fGRAVITY = .0140;
 const fCHARGE = -10.999;
 const fLINK = .0505;
 const fCENTER = 0.0000;
@@ -37,9 +46,9 @@ const COLORS = {
   node: {
     stroke: '#000',
     strokeWidth: 2,
-    strokeSelected: '#999',
+    strokeSelected: '#333',
     fillComplete: '#9f9',
-    fillBlocked: '#777',
+    fillBlocked: '#999',
     fillAvailable: '#fff',
     fillGhost: '#fff',
     opacityGhost: 0.8,
@@ -62,7 +71,7 @@ const COLORS = {
   region: {
     complete: '#daffda',
     available: '#eee',
-    blocked: '#aaa',
+    blocked: '#ccc',
   },
 
   text: {
@@ -883,13 +892,55 @@ export default function App({user}) {
   return (
     <>
       <div className='buttonbar'>
-        <Button onClick={save}><BsFillCloudUploadFill />Upload</Button>
-        <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button>
+        {/* <Button onClick={save}><BsFillCloudUploadFill />Upload</Button> */}
+        {/* <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button> */}
         <Toggle onClick={e => setVizConfig({...vizConfig, showLabels: !vizConfig.showLabels})}>
           { vizConfig.showLabels ? <BsCheck /> : <BsX /> }
         Labels</Toggle>
         <span className='spacer'></span>
-        <Button><UserIcon /> {user} </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <UserIcon />
+              {user}
+              <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className='w-60 l-5'>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Settings</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={vizConfig.showLabels}
+                onCheckedChange={b => setVizConfig({...vizConfig, showLabels: b})}>
+                <Tag />
+                Show labels
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Sync</DropdownMenuLabel>
+              <DropdownMenuItem onClick={e => console.log("upload")}>
+                <CloudUpload stroke='black'/>
+                Upload
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={load}>
+                <CloudDownload stroke='black'/>
+                Download
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </DropdownMenuGroup>
+
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuItem variant='destructive'
+              onClick={e => supabase.auth.signOut({scope: 'global'})}>
+              <LogOutIcon />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
 
       <Sim tasks={solvedTasks} selectTask={selectTask} 

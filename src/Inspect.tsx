@@ -64,24 +64,31 @@ export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask,
     <Card className="test" id='inspect-pane-new'>
       <CardHeader className='card-header'>
         <div id='bar'>
-          <CheckBox task={currentTask} onClick={toggleComplete}/>
-          <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
+          <div>
+            <CheckBox task={currentTask} onClick={toggleComplete}/>
+            <TextWidget key={'title'+currentTask.id} defaultValue={currentTask.title} onBlur={commitFn('setTitle')}/>
+          </div>
+          <div>
           <Toggle className='external modal px-8' variant='outline' size='lg' 
             pressed={currentTask.isExternal}
             onPressedChange={commitFn('setIsExternal')}>External</Toggle>
           <PriorityModal key={'priority'+currentTask.id} defaultValue={currentTask.priority} update={commitFn('setPriority')}/>
+          </div>
         </div>
 
       </CardHeader>
       <CardContent>
       <Label htmlFor='select'>Dependencies</Label>
-      <Select options={selectOptions} 
+      <Select options={selectOptions.filter(o => currentTask.id != o.value)} 
         key={taskID}
         defaultValue={selectOptions.filter(o => currentTask.dependsOn.includes(o.value)) }
         closeMenuOnSelect={false}
         onChange={handleChange}
         isMulti
-        styles={{menu: (baseStyles, state) => ({...baseStyles, fontSize: '.7em'})}}
+        styles={{
+          menu: (baseStyles, state) => ({...baseStyles, fontSize: '.7em'}),
+          option: (baseStyles, state) => ({...baseStyles, padding: '5px 5px'})
+        }}
       />
 
       <MarkdownWidget key={'desc'+currentTask.id} 
@@ -255,15 +262,31 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
     <rect 
         className='target'
         //stroke='white' 
-        strokeWidth='6'
+        strokeWidth='10'
         //fill='#fff'
         fillOpacity='0'
         height={r}
         width={r}
         x={cx -r/2}
         y={cy - r/2}
-        rx={task.isExternal ? 10 : r}
-        ry={task.isExternal ? 10 : r}
+        rx={task.isExternal ? 20 : r}
+        ry={task.isExternal ? 20 : r}
+      ></rect>
+  )
+  const gap = 30;
+  const getFill = r => (
+    <rect 
+        className='target'
+        stroke='#3a3' 
+        strokeWidth='2'
+        fill='#9f9'
+        fillOpacity='1'
+        height={r-gap}
+        width={r-gap}
+        x={cx -(r-gap)/2}
+        y={cy - (r-gap)/2}
+        rx={task.isExternal ? 20 - (gap/2) : (r-gap)}
+        ry={task.isExternal ? 20 - (gap/2): (r-gap)}
       ></rect>
   )
   const getCross = r => (<g>
@@ -315,7 +338,7 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
       }
     >
       {getCircle(radii[1])}
-      { task.status == 'complete' ?  getCross(radii[1]) : undefined }
+      { task.status == 'complete' ?  getFill(radii[1]) : undefined }
     </svg>
   )
 }

@@ -50,7 +50,7 @@ div#debug {
   width: 200px;
   overflow-x: scroll;
   color: white;
-  /* visibility: hidden; */
+  visibility: hidden;
 
   & p {
 
@@ -148,4 +148,8 @@ h2, h4 {
   span.spacer {
     flex: 1 0;
   }
+}
+
+div[role='menuitem'], div[role='menuitemcheckbox'] {
+  cursor: pointer;
 }

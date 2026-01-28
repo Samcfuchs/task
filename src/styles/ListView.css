@@ -11,6 +11,17 @@
     overflow-y: scroll;
     flex-basis: 20%;
 
+    & svg.checkbox {
+        height: 20px;
+        width: 20px;
+        background: none;
+        cursor: pointer;
+        margin: auto;
+        stroke-width: 100;
+
+        & .target {
+        }
+    }
 
 
     #list-items {
@@ -21,7 +32,7 @@
     & .list-item {
 
         background-color: var(--background);
-        border-top: 1px solid black;
+        border-top: 1px solid #ccc;
         padding: 5px;
         /* border-radius: 5px; */
         flex: 0 1 auto;
@@ -37,6 +48,18 @@
             margin: auto 0;
             flex: 1 0;
         }
+
+        .priority span {
+            width: 20px;
+            margin: 0;
+        }
+        
+        .priority {
+            height: 30px;
+            margin: auto;
+        }
+
+
 
         &:hover {
 

@@ -12,3 +12,8 @@ dependencies, and that's what the task tree symbolizes.
 It's built with D3-force and React on the frontend, with a backend coming soon
 in Python and SQL. See [TODO.md](TODO.md) for upcoming features, including a
 public alpha deployment.
+
+```
+npm install
+npx shadcn@latest init
+```

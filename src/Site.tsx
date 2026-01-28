@@ -11,6 +11,18 @@ import "@/styles/index.css";
 //import { createClient } from '@/lib/supabase/client';
 import { supabase } from "@/lib/supabase/client";
 
+
+import { 
+  DropdownMenu, 
+  DropdownMenuCheckboxItem, 
+  DropdownMenuContent, DropdownMenuGroup, 
+  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuItem, DropdownMenuLabel 
+} from '@/components/ui/dropdown-menu.tsx';
+import { BellIcon, CloudDownload, CloudDownloadIcon, CloudUpload, LogOutIcon, MailIcon, MessageSquareIcon, Tag, UserIcon } from "lucide-react";
+import { Button } from "./components/ui/button";
+
+
 export default function Site() {
     //const [session, setSession] = useState<Session | null>(null);
 
@@ -33,8 +45,105 @@ export default function Site() {
             </AuthGate>
           } 
         />
+
+        <Route path="/test" element={<Test />} />
       </Routes>
     )
+  
+  function Test() {
+    return (<div className='m-20'>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">
+          <UserIcon />
+          Username
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+
+          <DropdownMenuGroup  >
+            <DropdownMenuLabel>Sync</DropdownMenuLabel>
+            <DropdownMenuItem>
+              <CloudUpload />
+              c
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <CloudDownloadIcon stroke={'black'}/>
+              Download
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </DropdownMenuGroup>
+
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Settings</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem>
+              <Tag />
+              Show labels
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+          </DropdownMenuGroup>
+
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuItem variant='destructive'>
+              <LogOutIcon />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenuCheckboxesIcons />
+    </div>)
+  }
+
+function DropdownMenuCheckboxesIcons() {
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: false,
+    push: true,
+  })
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Notifications</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-48">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Notification Preferences</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={notifications.email}
+            onCheckedChange={(checked) =>
+              setNotifications({ ...notifications, email: checked === true })
+            }
+          >
+            <MailIcon />
+            Email notifications
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={notifications.sms}
+            onCheckedChange={(checked) =>
+              setNotifications({ ...notifications, sms: checked === true })
+            }
+          >
+            <MessageSquareIcon />
+            SMS notifications
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={notifications.push}
+            onCheckedChange={(checked) =>
+              setNotifications({ ...notifications, push: checked === true })
+            }
+          >
+            <BellIcon />
+            Push notifications
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
   function Login() {
     return (<>

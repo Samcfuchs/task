@@ -48,12 +48,26 @@ svg.checkbox {
     gap: 10px;
     align-items: stretch;
     height: inherit;
+    flex-wrap: wrap;
+
+    div:nth-child(1) {
+      flex: 1 0;
+      display: flex;
+      gap: 5px;
+    }
+
+    div:nth-child(2) {
+      flex: 0 0;
+      display: flex;
+      gap: 5px;
+    }
 
     & .checkbox {
-      height: 50px;
-      flex: 0 0 50px;
+      height: 30px;
+      flex: 0 0 30px;
       background: none;
       cursor: pointer;
+      margin: auto
     }
 
     & .text-widget { flex: 1 0; }
@@ -67,6 +81,7 @@ svg.checkbox {
       height: inherit; 
       transition: background-color 0.5s, border-radius 0.5s;
       border-radius: var(--radius-4xl);
+      padding: 10px;
     }
     & .external[data-state='on'] { 
       background-color: var(--accent);
