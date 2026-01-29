@@ -87,7 +87,9 @@ export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask,
         isMulti
         styles={{
           menu: (baseStyles, state) => ({...baseStyles, fontSize: '.7em'}),
-          option: (baseStyles, state) => ({...baseStyles, padding: '5px 5px'})
+          option: (baseStyles, state) => ({...baseStyles, padding: '5px 5px'}),
+          multiValue: (baseStyles, state) => ({...baseStyles, borderRadius: '5px'}),
+          multiValueRemove: (baseStyles, state) => ({...baseStyles, paddingLeft: '6px',paddingRight:'6px'})
         }}
       />
 
@@ -99,25 +101,18 @@ export function Inspect({tasks, taskID, selectTask, onCommit, addDependencyTask,
       </CardContent>
 
       <CardFooter>
-        <Button variant='outline' size='lg' onClick={() => {
-          selectTask(null);
-        }}>Submit</Button>
+        <Button variant='outline'  onClick={() => { selectTask(null); }}>
+          Submit
+        </Button>
 
-        <Button variant='destructive' size='lg' 
+        <Button variant='destructive' //size='lg' 
           onClick={() => {
           onCommit({id: taskID, type: 'delete'});
           selectTask(null);
         }}>Delete</Button>
+        <Button variant='outline' onClick={() => selectTask(null)}>Exit</Button>
       
       </CardFooter>
-      <Button className='delete rounded-full' size='icon' 
-        onClick={e => {
-          e.stopPropagation();
-          selectTask(null);
-        }}
-      >
-        <XIcon size='sm' strokeWidth='5' height='2px'/>
-      </Button>
     </Card>
   )
 }
