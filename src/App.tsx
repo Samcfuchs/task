@@ -24,11 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu.tsx';
 import { supabase } from './lib/supabase/client.ts';
 
-// Fence locations
-const COMPLETED_TASK_SETPOINT = 150;
-const GRAVITY_SETPOINT = 150;
-const BLOCKED_SETPOINT = 400;
-
 const [LABEL_OFFSET_X, LABEL_OFFSET_Y] = [20,-20]
 
 // Fence parameters
@@ -42,8 +37,10 @@ const fCHARGE = -10.999;
 const fLINK = .0505;
 const fCENTER = 0.0000;
 const rCOLLISION = 20;
-const fWALL = 0.0006;
+const fWALL = 0.0026;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
+
+const HEIGHT = 700;
 
 const COLORS = {
   node: {
@@ -84,7 +81,7 @@ const COLORS = {
 
 const SIM = {
   alphaTarget: 0,
-  alphaDecay: 0.001,
+  alphaDecay: 0.003,
   ambientWarm: 0.8
 }
 
@@ -139,6 +136,7 @@ function constrain (n : number, min : number, max : number) : number {
 }
 
 /** Exert a custom y-force with exponential magnitude */
+// TO/DO1: Write forceX as related to forceY
 function forceY(y0 : number, strength : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
   let nodes : Node[];
   const dir = direction ? direction : 1;
@@ -160,7 +158,28 @@ function forceY(y0 : number, strength : number, nodeFilter : (n: Node) => boolea
   return force;
 }
 
+function forceX(x0 : number, strength : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
+  let nodes : Node[];
+  const dir = direction ? direction : 1;
+  const fIB = strength;
+  const decay = FENCE_DECAY;
+  function force(alpha : number) {
+    for (const node of nodes) {
+      if (!nodeFilter(node)) continue;
+      if (!node.x) continue;
 
+      const dy = (node.x - x0) * dir; // Positive when below line
+      const a = fIB * Math.exp(-dy / decay) * alpha * dir;
+      node.vx = constrain(a, -10, 10) + (node.vx ?? 0)
+    }
+  }
+
+  force.initialize = (n : Node[]) => {nodes = n};
+
+  return force;
+}
+
+// TO/DO6: edit data refactor to spread nodes along y axis
 function refactorData(tasks: TaskMap, 
                       prev: {nodes: Map<string,Node>, links: Link[]} 
                           = {nodes: new Map<string, Node>(), links: []}) 
@@ -175,7 +194,7 @@ function refactorData(tasks: TaskMap,
       task: task,
       hovered: false,
       selected: false,
-      x: (Math.random() * 400) - 200,
+      x: Math.random(),
       y: 200,
       vx: 0,
       vy: 0
@@ -239,8 +258,15 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   let currentClickIsDrag = false;
 
 
-  const height = 500;
-  const width = 1400;
+  // TODO3: Fix height & width
+  const height = 800;
+  const width = 500;
+
+  // Fence locations
+  //TODO4: Adjust fence locations
+  const COMPLETED_TASK_SETPOINT = width * .35;
+  const GRAVITY_SETPOINT = 0;
+  const BLOCKED_SETPOINT = width * -.25;
 
   const container = d3.select(containerRef.current)
   //console.debug('width', parseInt(container.style('width')));
@@ -338,9 +364,10 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
     d3.select('#debug').selectAll('*').remove();
-    d3.select('#debug').append('p');
+    d3.select('#debug').append('p').classed('alpha',true);
 
-    document.querySelector('#svg-container').scrollTo(400,0);
+    // TO/DO8: Remove autoscroll. it's ok to start at the top of a vertical layout
+    //document.querySelector('#svg-container').scrollTo(400,0);
 
     console.log(width, height);
 
@@ -354,6 +381,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     const viz_lines = svg.append('g').attr('id', 'borders');
     const defs = svg.append('defs');
 
+    // TO/DO4: makeLineX
     function makeLine(y : number, color : string) {
       const l = viz_lines.append('line')
         .attr('stroke', color)
@@ -365,27 +393,42 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
       return l;
     }
 
-    makeLine(COMPLETED_TASK_SETPOINT, COLORS.border.complete);
-    makeLine(BLOCKED_SETPOINT, COLORS.border.blocked);
+    function makeLineX(x : number, color : string) {
+      const l = viz_lines.append('line')
+        .attr('stroke', color)
+        .attr('stroke-width', '2')
+        .attr('y1', 0)
+        .attr('y2',  height)
+        .attr('x1', x)
+        .attr('x2',  x)
+      return l;
+    }
 
+    makeLineX(COMPLETED_TASK_SETPOINT, COLORS.border.complete);
+    makeLineX(BLOCKED_SETPOINT, COLORS.border.blocked);
+    //makeLineX(0, 'black');
+
+    // TODO3: Change all the forces to point in X direction
     const sim = d3.forceSimulation<Node>()
       .alphaTarget(SIM.alphaTarget)
       .alphaDecay(SIM.alphaDecay)
       .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => nodeSize(d) / 2)) // TODO: add priority
+      .force("collide", d3.forceCollide(d => nodeSize(d) / 2))
       //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
       //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
-      .force('leftWall', d3.forceX(-200).strength(fWALL))
-      .force('rightWall', d3.forceX(200).strength(fWALL))
+      .force('ceil', d3.forceY(0).strength(fWALL))
+      .force('floor', d3.forceY(height).strength(fWALL))
 
-      .force("center", d3.forceX(0).strength(fCENTER))
-      .force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
+      //.force("center", d3.forceY(0).strength(fCENTER))
+      //.force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
+      .force('leftBound', forceX(-(width/2), -10, () => true, -1))
+      //.force('rightBound', forceX((width/2), -10, () => true, 1))
 
-      .force('centerUpperBound', forceY(COMPLETED_TASK_SETPOINT, -10, d => d.task.status != 'complete', -1))
-      .force('centerLowerBound', forceY(BLOCKED_SETPOINT, -10, d => !d.task.isBlocked))
-      .force("complete", forceY(COMPLETED_TASK_SETPOINT, fFENCE, d => d.task.status=='complete'))
-      .force("blocked", forceY(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, -1));
+      .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT, -10, d => d.task.status != 'complete', 1))
+      .force('centerLowerBound', forceX(BLOCKED_SETPOINT, -10, d => !d.task.isBlocked, -1))
+      .force("complete", forceX(COMPLETED_TASK_SETPOINT, fFENCE, d => d.task.status=='complete', -1))
+      .force("blocked", forceX(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, 1));
 
     simRef.current = sim;
 
@@ -410,21 +453,21 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     
 
 
-    function makeRegion(y : number, height : number, fill : string) {
+    function makeRegion(x : number, width : number, fill : string) {
       const region = viz_regions.append('rect')
-        .attr('x', -width/2)
-        .attr('width', width)
-        .attr('y', y)
+        .attr('y', 0)
         .attr('height', height)
+        .attr('x', x)
+        .attr('width', width)
         .attr('fill', fill)
         .attr('opacity', 0)
 
       return region;
     }
 
-    const completedTaskRegion = makeRegion(0, COMPLETED_TASK_SETPOINT, COLORS.region.complete).attr('id','complete');
-    const mainTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, BLOCKED_SETPOINT - COMPLETED_TASK_SETPOINT, COLORS.region.available).attr('id', 'main');
-    const blockedTaskRegion = makeRegion(BLOCKED_SETPOINT, height - BLOCKED_SETPOINT, COLORS.region.blocked).attr('id','blocked');
+    const completedTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, width-COMPLETED_TASK_SETPOINT, COLORS.region.complete).attr('id','complete');
+    const mainTaskRegion = makeRegion(BLOCKED_SETPOINT, COMPLETED_TASK_SETPOINT-BLOCKED_SETPOINT , COLORS.region.available).attr('id', 'main');
+    const blockedTaskRegion = makeRegion((-width/2), BLOCKED_SETPOINT - (-width/2), COLORS.region.blocked).attr('id','blocked');
 
 
 
@@ -461,7 +504,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
         .attr('y2', d => d.target.y)
       
 
-      d3.select('#debug').select('p').text(sim.alpha());
+      d3.select('#debug').select('p.alpha').text(sim.alpha());
     });
 
   }, [width, height]);
@@ -630,9 +673,10 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     event.subject.fx = constrain(event.x, -width/2, width/2)
     event.subject.fy = constrain(event.y, 0, height);
 
+    // TODO4: All the dragged triggers for highlighting regions
     if (targetNode.task.status != 'complete') {
 
-      if (event.y < COMPLETED_TASK_SETPOINT) {
+      if (event.x > COMPLETED_TASK_SETPOINT) {
         viz_regions.select('#complete').attr('opacity', 1)
 
       } else {
@@ -641,7 +685,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     }
 
     if (targetNode.task.status == 'complete') {
-      if (event.y > COMPLETED_TASK_SETPOINT && event.y < BLOCKED_SETPOINT) {
+      if (event.x < COMPLETED_TASK_SETPOINT && event.y > BLOCKED_SETPOINT) {
         viz_regions.select('#main').attr('opacity', 1)
 
       } else {
@@ -650,7 +694,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
     }
 
-    if (event.y > BLOCKED_SETPOINT) {
+    if (event.x < BLOCKED_SETPOINT) {
       viz_regions.select('#blocked').attr('opacity', 1)
     } else {
       viz_regions.select('#blocked').attr('opacity', 0)
@@ -676,18 +720,19 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     event.subject.fx = null;
     event.subject.fy = null;
 
-    if (targetNode.y < COMPLETED_TASK_SETPOINT
+    // TODO4: All the dragended triggers for highlighting regions
+    if (targetNode.x > COMPLETED_TASK_SETPOINT
       && targetNode.task.status != 'complete') {
 
       onCommit([{id: targetNode.id, type: 'complete'}])
     }
 
-    if (targetNode.y > COMPLETED_TASK_SETPOINT 
+    if (targetNode.x < COMPLETED_TASK_SETPOINT 
       && targetNode.task.status == 'complete') {
       onCommit([{id: targetNode.id, type: 'uncomplete'}])
     }
 
-    if (targetNode.y > BLOCKED_SETPOINT && currentClickIsDrag) {
+    if (targetNode.x < BLOCKED_SETPOINT && currentClickIsDrag) {
       setAddDependencyTask(targetNode.id);
     }
 
@@ -766,6 +811,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
 
     // Add "ghost node"
+    // TODO6: Alter ghost node spawn point
     const [ghostX, ghostY] = [childNode.x, childNode.y-100]
     const ghostLine = tempLine(childNode.x, childNode.y,ghostX,ghostY)
     const ghostNode = tempNode(ghostX, ghostY)
