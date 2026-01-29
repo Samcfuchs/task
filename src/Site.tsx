@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 
 //import type { Session } from "@supabase/supabase-js";
 
@@ -10,16 +10,7 @@ import App from "./App";
 import "@/styles/index.css";
 //import { createClient } from '@/lib/supabase/client';
 import { supabase } from "@/lib/supabase/client";
-
-
-import { 
-  DropdownMenu, 
-  DropdownMenuCheckboxItem, 
-  DropdownMenuContent, DropdownMenuGroup, 
-  DropdownMenuSeparator, DropdownMenuTrigger,
-  DropdownMenuItem, DropdownMenuLabel 
-} from '@/components/ui/dropdown-menu.tsx';
-import { BellIcon, CloudDownload, CloudDownloadIcon, CloudUpload, LogOutIcon, MailIcon, MessageSquareIcon, Tag, UserIcon } from "lucide-react";
+import { Card, CardContent, CardFooter } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 
 
@@ -34,7 +25,7 @@ export default function Site() {
       <Routes>
         <Route path="/" element={<Splash />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/signup" element={<SignUp />} />
         <Route path="/protected" element={<AuthTest />} />
 
         <Route 
@@ -46,104 +37,9 @@ export default function Site() {
           } 
         />
 
-        <Route path="/test" element={<Test />} />
       </Routes>
     )
   
-  function Test() {
-    return (<div className='m-20'>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline">
-          <UserIcon />
-          Username
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-
-          <DropdownMenuGroup  >
-            <DropdownMenuLabel>Sync</DropdownMenuLabel>
-            <DropdownMenuItem>
-              <CloudUpload />
-              c
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CloudDownloadIcon stroke={'black'}/>
-              Download
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </DropdownMenuGroup>
-
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Settings</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem>
-              <Tag />
-              Show labels
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-          </DropdownMenuGroup>
-
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Account</DropdownMenuLabel>
-            <DropdownMenuItem variant='destructive'>
-              <LogOutIcon />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <DropdownMenuCheckboxesIcons />
-    </div>)
-  }
-
-function DropdownMenuCheckboxesIcons() {
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: false,
-    push: true,
-  })
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline">Notifications</Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-48">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Notification Preferences</DropdownMenuLabel>
-          <DropdownMenuCheckboxItem
-            checked={notifications.email}
-            onCheckedChange={(checked) =>
-              setNotifications({ ...notifications, email: checked === true })
-            }
-          >
-            <MailIcon />
-            Email notifications
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={notifications.sms}
-            onCheckedChange={(checked) =>
-              setNotifications({ ...notifications, sms: checked === true })
-            }
-          >
-            <MessageSquareIcon />
-            SMS notifications
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={notifications.push}
-            onCheckedChange={(checked) =>
-              setNotifications({ ...notifications, push: checked === true })
-            }
-          >
-            <BellIcon />
-            Push notifications
-          </DropdownMenuCheckboxItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
 
   function Login() {
     return (<>
@@ -162,11 +58,23 @@ function DropdownMenuCheckboxesIcons() {
   }
 
   function Splash() {
-    return (<article>
+    return (
+      <article>
+        <Card className='w-100 m-auto my-50'>
+
+          <CardContent>
       <p>This is gonna be a really cool app. Check it out.</p>
-      <div><a href="/login" className="btn">Log In</a></div>
-      <div><a href="/sign-up">Sign Up</a></div>
-    </article>)
+          </CardContent>
+            <CardFooter>
+              <Link to="/login"><Button>Log in</Button></Link>
+              <span style={{width: '20px'}}></span>
+              <Link to="/signup"><Button>Sign up</Button></Link>
+              <span style={{width: '20px'}}></span>
+              <Link to="/sandbox"><Button>Try it out</Button></Link>
+            </CardFooter>
+        </Card>
+      </article>
+    )
   }
 
 
@@ -238,4 +146,3 @@ function DropdownMenuCheckboxesIcons() {
 
 }
 
-window.supabase = supabase;
