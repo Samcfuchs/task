@@ -35,7 +35,7 @@
         border-top: 1px solid #ccc;
         padding: 5px;
         /* border-radius: 5px; */
-        flex: 0 1 auto;
+        flex: 0 0 auto;
         align-items: stretch;
         cursor: pointer;
         gap: 10px;
@@ -43,10 +43,24 @@
         display: flex;
         flex-direction: row;
         transition: background-color 0.2s;
+        align-items: center;
+        justify-content: flex-start;
 
         span {
             margin: auto 0;
-            flex: 1 0;
+            flex: 1 1 0;
+
+        }
+
+        span.title {
+            mask-image: linear-gradient(to right, black 80%, transparent 100% );
+            white-space: nowrap;
+            overflow-x: hidden;
+
+        }
+
+        svg {
+            flex-shrink: 0;
         }
 
         .priority span {
@@ -58,20 +72,12 @@
             height: 30px;
             margin: auto;
         }
-
-
-
-        &:hover {
-
-
-        }
     }
     & .buttonbar {
         position: sticky;
         top: 0;
+        z-index: 99;
+        /* mask-image: linear-gradient(to bottom, black 0%, transparent 100%) */
     }
 
-}
-
-button {
 }

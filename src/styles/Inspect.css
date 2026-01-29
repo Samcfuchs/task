@@ -16,6 +16,8 @@ svg.checkbox {
   font-size: 18px;
   gap:10px;
 
+  transition: height 1s;
+
 
 
   & input[type='checkbox'] {
@@ -131,12 +133,10 @@ svg.checkbox {
     /* background: #1a1a1aff; */
   }
 
-}
-
-#inspect-pane-new {
   & label {
     margin: 5px 0;
   }
+
 }
 
 .markdown-widget {

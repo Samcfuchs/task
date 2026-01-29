@@ -2,8 +2,7 @@
 @custom-variant dark (&:is(.dark *));
 
 #root {
-  max-width: 1280px;
-  margin: 0;
+  /* max-width: 1280px; */
   box-sizing: border-box;
   /* box-sizing: content-box; */
   margin: 0 auto;
@@ -14,12 +13,12 @@
   overflow-y: hidden;
 
   & #svg-container {
-    flex: 2 0 content;
+    flex: 2 1 content;
     overflow-x: scroll;
   }
 
   & #list-container {
-    flex: 1 1 20%;
+    flex: 1 1 40%;
     position: static;
     overflow-y: hidden;
 
@@ -33,6 +32,26 @@
     flex: 0 0 content;
 
   }
+
+  #inspect-pane-new {
+    flex: 1 0 content;
+    transition: flex-basis 1s;
+    margin: 5px auto;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  #inspect-pane-new:empty{
+    margin: 0 auto;
+    flex: 0 0 0;
+  }
+
+  #list-container, .buttonbar {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
 }
 
 body {
@@ -96,6 +115,7 @@ h2, h4 {
   /* width: 100%; */
   /* height: 500px; */
   height: 100%;
+  margin: 0 auto;
 
   & .selected {
     /* box-shadow: #fff 0 0 10px */
@@ -114,6 +134,7 @@ h2, h4 {
     paint-order: stroke;
     stroke-linecap: round;
   }
+  
 }
 
 @layer base {

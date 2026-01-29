@@ -52,6 +52,7 @@ lost on me.
     - [x] New accounts not able to post snapshots
     - [x] Labels not updating
     - [ ] Fix vertical layout
+    - [x] Inspect sometimes goes offscreen
 
 ----
 
@@ -73,15 +74,16 @@ lost on me.
     - [x] Enable horizontal scrolling
     - [ ] Inspector
         - [x] Fix markdown styling
+        - [ ] Allow expanding the inspector
     - [ ] List view
         - [ ] Create expanded list view
     - [ ] Viz
         - [ ] Play/pause button
+        - [ ] Anchored nodes
         - [ ] Zoom (horizontal)
         - [ ] Fix: ghost node covers nodes above, making them unselectable
         - [ ] Optionally hide child nodes
         - [ ] Autoscroll selected task into view
-        - [ ] Anchored nodes
     - [ ] Toolbar
         - [x] Coalesce account controls under account button
         - [x] Add logout button

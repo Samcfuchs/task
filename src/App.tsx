@@ -9,7 +9,7 @@ import { generateID } from './Domain.ts'
 import { BsFillCloudUploadFill, BsFillCloudDownloadFill, BsCheck, BsX } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
-import { CloudDownload, CloudUpload, Tag, UserIcon, LogOutIcon, ChevronDown } from 'lucide-react';
+import { CloudDownload, CloudUpload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter, PlayIcon, Pause, PlayCircle, PauseCircle, Play } from 'lucide-react';
 import { Toggle } from './components/ui/toggle.tsx';
 
 import { 
@@ -17,7 +17,10 @@ import {
   DropdownMenuCheckboxItem, 
   DropdownMenuContent, DropdownMenuGroup, 
   DropdownMenuSeparator, DropdownMenuTrigger,
-  DropdownMenuItem, DropdownMenuLabel 
+  DropdownMenuItem, DropdownMenuLabel, 
+  DropdownMenuSubContent,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu.tsx';
 import { supabase } from './lib/supabase/client.ts';
 
@@ -896,8 +899,10 @@ export default function App({user}) {
         {/* <Button onClick={save}><BsFillCloudUploadFill />Upload</Button> */}
         {/* <Button onClick={load}> <BsFillCloudDownloadFill /> Download</Button> */}
         <Toggle onClick={e => setVizConfig({...vizConfig, showLabels: !vizConfig.showLabels})}>
-          { vizConfig.showLabels ? <BsCheck /> : <BsX /> }
-        Labels</Toggle>
+          <Tag />Labels{ vizConfig.showLabels ? <BsCheck /> : <BsX /> }
+        </Toggle>
+
+        {/* <Toggle disabled>{} <Play/><Pause/>Freeze simulation</Toggle> */}
         <span className='spacer'></span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -916,12 +921,28 @@ export default function App({user}) {
                 <Tag />
                 Show labels
               </DropdownMenuCheckboxItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Filter/>Filters</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuCheckboxItem>Show completed tasks</DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem>Show blocked tasks</DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem>Show hidden tasks</DropdownMenuCheckboxItem>
+
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              <DropdownMenuItem disabled>
+                <Undo2 />Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <Redo2/>Redo
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuGroup>
             <DropdownMenuGroup>
               <DropdownMenuLabel>Sync</DropdownMenuLabel>
               <DropdownMenuItem onClick={save}>
-                <CloudUpload stroke='black'/>
+                <Save stroke='black'/>
                 Upload
               </DropdownMenuItem>
               <DropdownMenuItem onClick={load}>

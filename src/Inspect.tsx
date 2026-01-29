@@ -362,7 +362,7 @@ export function ListView({tasks, selectTask, onCommit} :
     return (
       <div className={'list-item ' } onClick={e => selectTask(task.id)}>
         <CheckBox task={task} onClick={toggleComplete}></CheckBox>
-        <span>{task.title}</span>
+        <span className='title'>{task.title}</span>
         <PriorityModal defaultValue={task.priority} 
           update={n => onCommit({id:task.id, type: 'setPriority', value: n})}/>
       </div>
