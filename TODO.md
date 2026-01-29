@@ -50,6 +50,8 @@ lost on me.
     - [x] Layout breaks when opening inspector on mobile
     - [x] Horizontal scroll still has some quirks
     - [x] New accounts not able to post snapshots
+    - [x] Labels not updating
+    - [ ] Fix vertical layout
 
 ----
 

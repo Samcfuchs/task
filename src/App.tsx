@@ -534,6 +534,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
           update.select('rect')
             .attr('width', nodeSize) 
             .attr('height', nodeSize) 
+          update.select('text').text(d => d.task.title)
           update.select('rect').transition().duration(200)
             .attr('rx', d => d.task.isExternal ? 3 : nodeSize(d)) 
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
