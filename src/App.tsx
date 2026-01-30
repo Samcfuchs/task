@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import '@/styles/App.css';
 import * as d3 from 'd3'
 import { saveTasks, getTasks, calculate, processIntent, type Task, type CommitEvent } from './Tasks.ts';
 import { Inspect, Tooltip, ListView} from './Inspect.tsx';
 import { generateID } from './Domain.ts'
 
-import { BsFillCloudUploadFill, BsFillCloudDownloadFill, BsCheck, BsX } from "react-icons/bs";
+import { BsCheck, BsX } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
-import { CloudDownload, CloudUpload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter, PlayIcon, Pause, PlayCircle, PauseCircle, Play } from 'lucide-react';
+import { CloudDownload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter } from 'lucide-react';
 import { Toggle } from './components/ui/toggle.tsx';
 
 import { 
@@ -36,11 +36,15 @@ const fGRAVITY = .0140;
 const fCHARGE = -10.999;
 const fLINK = .0505;
 const fCENTER = 0.0000;
-const rCOLLISION = 20;
 const fWALL = 0.0026;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
 
-const HEIGHT = 700;
+// Fence locations
+//TODO4: Adjust fence locations
+const COMPLETED_TASK_SETPOINT = .35;
+const GRAVITY_SETPOINT = 0;
+const BLOCKED_SETPOINT = -.25;
+
 
 const COLORS = {
   node: {
@@ -236,7 +240,6 @@ function buildSimData(tasks: TaskMap, prev: {nodes: Node[], links: Link[]} = {no
                                                                                                              
  
 */
-
 export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addDependencyTask, setAddDependencyTask, vizConfig } : 
   { tasks: TaskMap, 
     onCommit: (events: CommitEvent[]) => void, 
@@ -249,26 +252,38 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   } ) {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const simRef = useRef<d3.Simulation<Node, undefined> | null>(null);
+  const simRef = useRef<d3.Simulation<Node, undefined> | null>(d3.forceSimulation());
   const simDataRef = useRef<{nodes: Node[], links: Link[]}>({nodes: [], links: []});
   const solvedTasks = useMemo( () => calculate(tasks), [tasks])
   const containerRef = useRef(null);
   const [spawnHint, setSpawnHint] = useState<SpawnHint | null>(null);
   const nodeRef = useRef(null);
-  let currentClickIsDrag = false;
+  //let currentClickIsDrag = false;
+  const currentClickIsDrag = useRef(false);
+
+  const layoutRef = useRef({blockedSetpoint:null, completedSetpoint:null})
+
+  const dimsRef = useRef({width:null, height:null});
+  const container = d3.select(containerRef.current)
 
 
   // TODO3: Fix height & width
-  const height = 800;
+  const HEIGHT = 800;
   const width = 500;
 
-  // Fence locations
-  //TODO4: Adjust fence locations
-  const COMPLETED_TASK_SETPOINT = width * .35;
-  const GRAVITY_SETPOINT = 0;
-  const BLOCKED_SETPOINT = width * -.25;
+  useEffect(() => {
+    const ro = new ResizeObserver(entries => {
+      const dims = entries[0].contentRect;
+      dimsRef.current = {width:dims.width, height:dims.height};
+      console.debug("Changing dims to", dimsRef.current);
+      resizeEvent();
+    })
 
-  const container = d3.select(containerRef.current)
+    ro.observe(containerRef.current)
+    return () => ro.disconnect();
+  })
+
+
   //console.debug('width', parseInt(container.style('width')));
 
   //let width = parseInt(container.style('width'));
@@ -345,136 +360,38 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
       .style('left', (event.x+10)+'px');
   }
 
+  function buildForceSim() {
 
-/*
- 
- ██╗███╗   ██╗██╗████████╗██╗ █████╗ ██╗         ███████╗███████╗███████╗███████╗ ██████╗████████╗
- ██║████╗  ██║██║╚══██╔══╝██║██╔══██╗██║         ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝
- ██║██╔██╗ ██║██║   ██║   ██║███████║██║         █████╗  █████╗  █████╗  █████╗  ██║        ██║   
- ██║██║╚██╗██║██║   ██║   ██║██╔══██║██║         ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   
- ██║██║ ╚████║██║   ██║   ██║██║  ██║███████╗    ███████╗██║     ██║     ███████╗╚██████╗   ██║   
- ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   
-                                                                                                  
- 
-*/
-  useEffect(() => { // Initial effect
+    const { width } = dimsRef.current;
 
-    console.log("Initial effect");
+    const sim = simRef.current
+    .alphaTarget(SIM.alphaTarget)
+    .alphaDecay(SIM.alphaDecay)
+    .force("charge", d3.forceManyBody().strength(fCHARGE))
+    .force("collide", d3.forceCollide(d => nodeSize(d) / 2))
+    //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
+    //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-    d3.select('#debug').selectAll('*').remove();
-    d3.select('#debug').append('p').classed('alpha',true);
+    .force('ceil', d3.forceY(0).strength(fWALL))
+    .force('floor', d3.forceY(HEIGHT).strength(fWALL))
 
-    // TO/DO8: Remove autoscroll. it's ok to start at the top of a vertical layout
-    //document.querySelector('#svg-container').scrollTo(400,0);
+    //.force("center", d3.forceY(0).strength(fCENTER))
+    //.force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
+    .force('leftBound', forceX(-(width/2), -10, () => true, -1))
+    //.force('rightBound', forceX((width/2), -10, () => true, 1))
 
-    console.log(width, height);
+    .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, -10, d => d.task.status != 'complete', 1))
+    .force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, -10, d => !d.task.isBlocked, -1))
+    .force("complete", forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status=='complete', -1))
+    .force("blocked", forceX(BLOCKED_SETPOINT*width, -1, d => d.task.isBlocked, 1));
 
-    svg
-      .attr('height', height)
-      .attr('width', width)
+  }
 
-      .attr('viewBox', [-width/2, 0, width, height])
-
-    const viz_regions = svg.append('g').attr('id', 'regions');
-    const viz_lines = svg.append('g').attr('id', 'borders');
-    const defs = svg.append('defs');
-
-    // TO/DO4: makeLineX
-    function makeLine(y : number, color : string) {
-      const l = viz_lines.append('line')
-        .attr('stroke', color)
-        .attr('stroke-width', '2')
-        .attr('x1', -width/2)
-        .attr('x2',  width/2)
-        .attr('y1', y)
-        .attr('y2',  y)
-      return l;
-    }
-
-    function makeLineX(x : number, color : string) {
-      const l = viz_lines.append('line')
-        .attr('stroke', color)
-        .attr('stroke-width', '2')
-        .attr('y1', 0)
-        .attr('y2',  height)
-        .attr('x1', x)
-        .attr('x2',  x)
-      return l;
-    }
-
-    makeLineX(COMPLETED_TASK_SETPOINT, COLORS.border.complete);
-    makeLineX(BLOCKED_SETPOINT, COLORS.border.blocked);
-    //makeLineX(0, 'black');
-
-    // TODO3: Change all the forces to point in X direction
-    const sim = d3.forceSimulation<Node>()
-      .alphaTarget(SIM.alphaTarget)
-      .alphaDecay(SIM.alphaDecay)
-      .force("charge", d3.forceManyBody().strength(fCHARGE))
-      .force("collide", d3.forceCollide(d => nodeSize(d) / 2))
-      //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
-      //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
-
-      .force('ceil', d3.forceY(0).strength(fWALL))
-      .force('floor', d3.forceY(height).strength(fWALL))
-
-      //.force("center", d3.forceY(0).strength(fCENTER))
-      //.force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
-      .force('leftBound', forceX(-(width/2), -10, () => true, -1))
-      //.force('rightBound', forceX((width/2), -10, () => true, 1))
-
-      .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT, -10, d => d.task.status != 'complete', 1))
-      .force('centerLowerBound', forceX(BLOCKED_SETPOINT, -10, d => !d.task.isBlocked, -1))
-      .force("complete", forceX(COMPLETED_TASK_SETPOINT, fFENCE, d => d.task.status=='complete', -1))
-      .force("blocked", forceX(BLOCKED_SETPOINT, -1, d => d.task.isBlocked, 1));
-
-    simRef.current = sim;
-
-    const link = svg.append('g')
-      .attr('id', 'link')
-      .attr('stroke-width', COLORS.edge.strokeWidth);
-
-    const ghostLink = svg.append('g').attr('id', 'ghost-link')
-
-    nodeRef.current = svg.append('g')
-      .attr('id', 'node')
-      .attr('stroke-width', COLORS.node.strokeWidth)
-      .attr('stroke', COLORS.node.stroke)
-      .selectAll('g');
-
-    const ghostNode = svg.append('g')
-      .attr('id', 'ghost-node')
-      .attr('stroke-width', COLORS.node.strokeWidth)
-      .attr('stroke', COLORS.node.stroke)
-      .attr('fill', COLORS.node.fillGhost)
-      .attr('opacity', COLORS.node.opacityGhost);
-    
-
-
-    function makeRegion(x : number, width : number, fill : string) {
-      const region = viz_regions.append('rect')
-        .attr('y', 0)
-        .attr('height', height)
-        .attr('x', x)
-        .attr('width', width)
-        .attr('fill', fill)
-        .attr('opacity', 0)
-
-      return region;
-    }
-
-    const completedTaskRegion = makeRegion(COMPLETED_TASK_SETPOINT, width-COMPLETED_TASK_SETPOINT, COLORS.region.complete).attr('id','complete');
-    const mainTaskRegion = makeRegion(BLOCKED_SETPOINT, COMPLETED_TASK_SETPOINT-BLOCKED_SETPOINT , COLORS.region.available).attr('id', 'main');
-    const blockedTaskRegion = makeRegion((-width/2), BLOCKED_SETPOINT - (-width/2), COLORS.region.blocked).attr('id','blocked');
-
-
-
-    sim.on('tick', () => {
-
+  const tickFn = useCallback(() => {
       //const node = svg.select('g#node').selectAll('g');
       const node = nodeRef.current;
+      const svg = d3.select(svgRef.current);
+      const {width, height} = dimsRef.current;
 
       node.select('rect')
         .attr('x', d => {
@@ -482,7 +399,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
           return d.x - (nodeSize(d) / 2)
         })
         .attr('y', d => {
-          d.y = constrain(d.y, 0, height)
+          d.y = constrain(d.y, 0, HEIGHT)
           return d.y - (nodeSize(d) / 2)
         })
 
@@ -504,10 +421,116 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
         .attr('y2', d => d.target.y)
       
 
-      d3.select('#debug').select('p.alpha').text(sim.alpha());
-    });
+      d3.select('#debug').select('p.alpha').text(simRef.current.alpha());
 
-  }, [width, height]);
+  }, [dimsRef])
+
+
+/*
+ 
+ ██╗███╗   ██╗██╗████████╗██╗ █████╗ ██╗         ███████╗███████╗███████╗███████╗ ██████╗████████╗
+ ██║████╗  ██║██║╚══██╔══╝██║██╔══██╗██║         ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝
+ ██║██╔██╗ ██║██║   ██║   ██║███████║██║         █████╗  █████╗  █████╗  █████╗  ██║        ██║   
+ ██║██║╚██╗██║██║   ██║   ██║██╔══██║██║         ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   
+ ██║██║ ╚████║██║   ██║   ██║██║  ██║███████╗    ███████╗██║     ██║     ███████╗╚██████╗   ██║   
+ ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   
+                                                                                                  
+ 
+*/
+  useEffect(() => { // Initial effect
+
+    console.log("Initial effect");
+
+    const svg = d3.select(svgRef.current);
+    d3.select('#debug').selectAll('*').remove();
+    d3.select('#debug').append('p').classed('alpha',true);
+
+    const width = containerRef.current.getBoundingClientRect().width;
+
+    console.log("Initial dims:", width, HEIGHT);
+
+    svg
+      .attr('height', HEIGHT)
+      .attr('width', '100%')
+      .attr('viewBox', [-width/2, 0, width, HEIGHT])
+
+    svg.select('g#link').attr('stroke-width', COLORS.edge.strokeWidth);
+
+    nodeRef.current = svg.select('g#node')
+      .attr('stroke-width', COLORS.node.strokeWidth)
+      .attr('stroke', COLORS.node.stroke)
+      .selectAll('g');
+
+    const ghostNode = svg.select('g#ghost-node')
+      .attr('stroke-width', COLORS.node.strokeWidth)
+      .attr('stroke', COLORS.node.stroke)
+      .attr('fill', COLORS.node.fillGhost)
+      .attr('opacity', COLORS.node.opacityGhost);
+    
+    svg.select('g#borders').attr('stroke-width', 2)
+
+    buildForceSim()
+    simRef.current.on('tick', tickFn);
+
+  }, [width, HEIGHT, tickFn]);
+
+  function resizeEvent() {
+    //const container = containerRef.current;
+    const svg = d3.select(svgRef.current);
+    const {width, height} = dimsRef.current;
+
+    //const {width, height} = {width: dims.x, height: dims.y};
+    console.debug("Handling dims change to", width, height);
+
+    svg
+      .attr('width', width)
+      .attr('viewBox', [-width/2, 0, width, HEIGHT])
+
+    const completedTaskSetpoint = COMPLETED_TASK_SETPOINT * width;
+    const blockedSetpoint = BLOCKED_SETPOINT * width;
+
+    const lines = [
+      { x: COMPLETED_TASK_SETPOINT*width, color: COLORS.border.complete },
+      { x: BLOCKED_SETPOINT*width, color: COLORS.border.blocked }
+    ]
+
+    svg.select('g#borders')
+      .selectAll('line')
+      .data(lines)
+      .join('line')
+        .attr('stroke', d => d.color)
+        .attr('x1', d => d.x)
+        .attr('x2',  d => d.x)
+        .attr('y1', 0)
+        .attr('y2', HEIGHT)
+
+    const viz_regions = svg.select('g#regions')
+    function makeRegion(x : number, width : number, fill : string) {
+      const region = viz_regions.append('rect')
+        .attr('y', 0)
+        .attr('height', HEIGHT)
+        .attr('x', x)
+        .attr('width', width)
+        .attr('fill', fill)
+        .attr('opacity', 0)
+
+      return region;
+    }
+
+    viz_regions.selectChildren('rect').remove();
+    const completedTaskRegion = makeRegion(completedTaskSetpoint, width-completedTaskSetpoint, COLORS.region.complete).attr('id','complete');
+    const mainTaskRegion = makeRegion(blockedSetpoint, completedTaskSetpoint-blockedSetpoint , COLORS.region.available).attr('id', 'main');
+    const blockedTaskRegion = makeRegion((-width/2), blockedSetpoint - (-width/2), COLORS.region.blocked).attr('id','blocked');
+
+    simRef.current
+      .force('leftBound', forceX(-(width/2), -10, () => true, -1))
+      .force('rightBound', forceX((width/2), -10, () => true, 1))
+
+      .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, -10, d => d.task.status != 'complete', 1))
+      .force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, -10, d => !d.task.isBlocked, -1))
+      .force("complete", forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status=='complete', -1))
+      .force("blocked", forceX(BLOCKED_SETPOINT*width, -1, d => d.task.isBlocked, 1));
+  }
 
 /*
  
@@ -527,9 +550,6 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     if (!simRef.current) return;
 
     const svg = d3.select(svgRef.current)
-
-    //width = +svg.attr('width');
-    //height = +svg.attr('height');
 
     const tooltip = d3.select('div#tooltip')
     const viz_regions = svg.select('g#regions');
@@ -559,16 +579,13 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
             .attr('ry', d => d.task.isExternal ? 3 : nodeSize(d))
             .attr('fill', nodeColor)
             .attr('id', d => d.task.id)
-            .attr('x', d => (Math.random() * 400) - 200);
+            .attr('y', d => (Math.random() * 400) - 200);
 
           obj.append('text').text(d => d.task.title)
-            //.attr('stroke', '#fff')
-            //.attr('font-weight', '1')
             .attr('font-family', 'Helvetica')
             .attr('font-size', '20px')
             .attr('stroke-weight', '0')
             .attr('stroke', 'none')
-            //.attr('stroke-weight', '0.1')
             .attr('fill', COLORS.text.fill)
             .attr('transform', d => `rotate(30, ${d.x}, ${d.y})`)
           
@@ -591,6 +608,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
         exit => { exit.remove(); }
       );
 
+    // TODO: refactor this in a way that doesn't suck
     if (spawnHint) {
       nodeRef.current.each((d,i) => {
         if (d.id == spawnHint.id) {
@@ -602,13 +620,12 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
       })
 
-
       setSpawnHint(null)
     }
     const node = nodeRef.current;
 
 
-    const link = svg.select('g#link')
+    svg.select('g#link')
       .selectAll('line')
       .data(links, d => d.id)
       .join('line')
@@ -634,7 +651,6 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     node.on('mousemove.a', attachTooltipToMouse)
     node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
 
-    //node.append('title').text(d => d.task.title);
     // Add a drag behavior.
     applyDragListener();
 
@@ -661,52 +677,45 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     d3.select('#tooltip').classed('hidden',true);
 
     node.filter(n => n.id == event.subject.id).raise();
-    currentClickIsDrag = false;
+    currentClickIsDrag.current = false;
   }
 
-  function dragged(event) {
-    const targetNode = event.subject;
+
+  const dragged = useCallback((event, d) => {
+    const targetNode = d;
     const viz_regions = d3.select(svgRef.current).select('g#regions');
-    currentClickIsDrag = true;
+    currentClickIsDrag.current = true;
+
+    const {width, height} = dimsRef.current;
 
     //constrain(d.x, -width/2, width/2)
     event.subject.fx = constrain(event.x, -width/2, width/2)
-    event.subject.fy = constrain(event.y, 0, height);
+    event.subject.fy = constrain(event.y, 0, HEIGHT);
 
     // TODO4: All the dragged triggers for highlighting regions
     if (targetNode.task.status != 'complete') {
-
-      if (event.x > COMPLETED_TASK_SETPOINT) {
-        viz_regions.select('#complete').attr('opacity', 1)
-
-      } else {
-        viz_regions.select('#complete').attr('opacity', 0)
-      }
+      viz_regions.select('#complete')
+        .attr('opacity', event.x > COMPLETED_TASK_SETPOINT * width ? 1 : 0)
     }
 
     if (targetNode.task.status == 'complete') {
-      if (event.x < COMPLETED_TASK_SETPOINT && event.y > BLOCKED_SETPOINT) {
-        viz_regions.select('#main').attr('opacity', 1)
-
-      } else {
-        viz_regions.select('#main').attr('opacity', 0)
-      }
+      viz_regions.select('#main')
+        .attr('opacity', event.x < COMPLETED_TASK_SETPOINT *width&& event.x > BLOCKED_SETPOINT*width ? 1 : 0);
 
     }
 
-    if (event.x < BLOCKED_SETPOINT) {
-      viz_regions.select('#blocked').attr('opacity', 1)
-    } else {
-      viz_regions.select('#blocked').attr('opacity', 0)
-    }
+    viz_regions.select('#blocked')
+      .attr('opacity', event.x < BLOCKED_SETPOINT * width ? 1 : 0);
 
-  }
+  }, [BLOCKED_SETPOINT, dimsRef]);
 
-  function dragended(event,d) {
+  const dragended = useCallback((event, d) => {
 
-    if (!currentClickIsDrag) {
+    if (!currentClickIsDrag.current) {
       console.log("Calling dragended although this was actually a click");
     }
+
+    const {width, height} = dimsRef.current;
 
     console.debug('Drag ended on node', d.id)
 
@@ -717,38 +726,35 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     if (!event.active) simRef.current.alphaTarget(SIM.alphaTarget);
 
     // Unfix the subject position now that it’s no longer being dragged.
-    event.subject.fx = null;
-    event.subject.fy = null;
+    targetNode.fx = null;
+    targetNode.fy = null;
 
     // TODO4: All the dragended triggers for highlighting regions
-    if (targetNode.x > COMPLETED_TASK_SETPOINT
+    if (targetNode.x > COMPLETED_TASK_SETPOINT*width
       && targetNode.task.status != 'complete') {
 
       onCommit([{id: targetNode.id, type: 'complete'}])
     }
 
-    if (targetNode.x < COMPLETED_TASK_SETPOINT 
+    if (targetNode.x < COMPLETED_TASK_SETPOINT *width
       && targetNode.task.status == 'complete') {
       onCommit([{id: targetNode.id, type: 'uncomplete'}])
     }
 
-    if (targetNode.x < BLOCKED_SETPOINT && currentClickIsDrag) {
+    if (targetNode.x < BLOCKED_SETPOINT*width && currentClickIsDrag.current) {
       setAddDependencyTask(targetNode.id);
     }
 
 
-    const viz_regions = d3.select(svgRef.current).select('g#regions');
-    viz_regions.select('#complete').attr('opacity', 0)
-    viz_regions.select('#main').attr('opacity', 0)
-    viz_regions.select('#blocked').attr('opacity', 0)
-    //nodes = recalculate(nodes);
+    d3.select(svgRef.current).select('g#regions').selectAll('rect').attr('opacity',0);
 
     const node = nodeRef.current;
     node.on('mouseover.a', hoverNode);
     node.on('mousemove.a', attachTooltipToMouse)
     node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
 
-  }
+
+  }, [width])
 
   function applyDragListener() {
     d3.select('g#node').selectAll('g').call( d3.drag()
@@ -854,19 +860,6 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
   }, [selectedTask]);
 
-
-/*
- 
- ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗ ██╗   ██╗██████╗  █████╗ ████████╗██╗ ██████╗ ███╗   ██╗
-██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║
-██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗██║   ██║██████╔╝███████║   ██║   ██║██║   ██║██╔██╗ ██║
-██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║██║   ██║██╔══██╗██╔══██║   ██║   ██║██║   ██║██║╚██╗██║
-╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝╚██████╔╝██║  ██║██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║
-╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-                                                                                                                
- 
-*/
-
   useEffect(() => {
     console.debug("Config updating", vizConfig)
 
@@ -876,7 +869,15 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
   return (
     <div style={{border:'0px dotted blue'}} id='svg-container' ref={containerRef}>
-    <svg ref={svgRef} width='100%' viewBox='0 0 {defaultWidth} {defaultHeight}'><g></g></svg>
+    <svg ref={svgRef} width='100%' viewBox='0 0 {defaultWidth} {defaultHeight}'>
+      <g id="regions"></g>
+      <g id="borders"></g>
+      <defs></defs>
+      <g id="link"></g>
+      <g id="ghost-link"></g>
+      <g id='node'></g>
+      <g id='ghost-node'></g>
+    </svg>
     </div>
   )
 }
