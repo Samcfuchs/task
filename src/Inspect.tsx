@@ -207,45 +207,8 @@ function PriorityModal({defaultValue, update}) {
 }
 
 
-import { CheckIcon, PlusIcon, XIcon } from "lucide-react"
+import { CheckIcon, XIcon } from "lucide-react"
 import { Label } from './components/ui/label.tsx';
-function DependencyView({task, selectTask, allTasks, onCommit, setAddDependencyTaskID} 
-  : {task : Task, selectTask : (string) => void, allTasks:TaskMap, onCommit, setAddDependencyTaskID: (string) => void}) {
-
-  function DependencyWidget({parent} : {parent : Task}) {
-
-    return (
-      <span onClick={e => selectTask(parent.id)}>{parent.title}
-      <Button className='delete rounded-full' size='icon' 
-        onClick={e => {
-          e.stopPropagation();
-          onCommit({id:task.id, type:'unblock', blockerId:parent.id})
-        }}
-      >
-
-        <XIcon strokeWidth='2' />
-      
-      
-      </Button>
-      </span>
-        
-    )
-  }
-
-
-  return (
-    <div className='dependencies'>
-      {
-        task.dependsOn.map(parentID => {
-          return  <DependencyWidget parent={allTasks[parentID]}/>
-        })
-      }
-      <Button className='rounded-full' size='icon' onClick={e => setAddDependencyTaskID(task.id)} >
-        <PlusIcon/>
-      </Button>
-    </div>
-  )
-}
 
 function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void}) {
 
@@ -338,10 +301,21 @@ function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void})
   )
 }
 
-export function ListView({tasks, selectTask, onCommit} : 
-  { tasks : TaskMap, selectTask: (t:string) => void, onCommit: (c: CommitEvent) => void }
+export function ListView({tasks, selectTask, onCommit, hoveredTaskID} : 
+  { tasks : TaskMap, 
+    selectTask: (t:string) => void,
+    onCommit: (c: CommitEvent) => void
+    hoveredTaskID: string;
+   }
 ) {
 
+  useEffect(() => {
+    if (!highlightRef.current) return;
+    highlightRef.current.scrollIntoView({behavior:'smooth', block: 'center'});
+  }, [hoveredTaskID]);
+
+  //const itemsRef = useRef({})
+  const highlightRef = useRef(null);
 
   function toggleComplete(t : Task) {
     const e : CommitEvent = t.status == 'complete' 
@@ -355,7 +329,10 @@ export function ListView({tasks, selectTask, onCommit} :
 
   function ListItem({task} : {task: Task}) {
     return (
-      <div className={'list-item ' } onClick={e => selectTask(task.id)}>
+      <div className={'list-item ' + (task.id == hoveredTaskID ? 'highlight' : '') } 
+        onClick={e => selectTask(task.id)}
+        ref={task.id==hoveredTaskID ? highlightRef : null}>
+
         <CheckBox task={task} onClick={toggleComplete}></CheckBox>
         <span className='title'>{task.title}</span>
         <PriorityModal defaultValue={task.priority} 
@@ -402,7 +379,7 @@ export function ListView({tasks, selectTask, onCommit} :
           Object.values(tasks)
             .filter(filter)
             .sort(sort)
-            .map(t => <ListItem key={t.id} task={t}/>)
+            .map(t => <ListItem key={t.id} task={t} />)
         }
       </div>
 

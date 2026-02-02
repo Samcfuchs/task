@@ -259,6 +259,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   }
 
   const hoverNode = useCallback((_event, d) => {
+    if (!_event || !d) {
+      d3.select("#tooltip").classed('hidden', true);
+      hoverTask(null);
+      return;
+    }
     d3.select("#tooltip").classed('hidden', false);
     hoverTask(d.task.id);
   }, [hoverTask])
@@ -692,7 +697,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     node.on('click', (e,d) => selectTask(d.id));
     node.on('mouseover.a', hoverNode);
     node.on('mousemove.a', attachTooltipToMouse)
-    node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
+    node.on('mouseout.a', () => { hoverNode(null,null) })
 
     // Add a drag behavior.
     applyDragListener();
@@ -701,7 +706,6 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     viz_regions.on('click', e => selectTask(null));
 
 
-  // eslint-disable-next-line react-hooks/exhaustive-dep
   }, [applyDragListener, hoverNode, selectTask, solvedTasks, spawnHint, tasks]);
 
  
@@ -966,7 +970,7 @@ export default function App({user}) {
 
       <div id='list-container' style={{flex: selectedTaskID ? '0 1 0' : undefined }}>
         <ListView tasks={solvedTasks} selectTask={selectTask} 
-          onCommit={handleCommit}/>
+          onCommit={handleCommit} hoveredTaskID={hoveredTaskID}/>
       </div>
 
 

@@ -52,6 +52,10 @@
 
         }
 
+        &.highlight {
+            background-color: #eee;
+        }
+
         span.title {
             mask-image: linear-gradient(to right, black 80%, transparent 100% );
             white-space: nowrap;
