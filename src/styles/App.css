@@ -34,7 +34,7 @@
   }
 
   #inspect-pane-new {
-    flex: 1 0 content;
+    flex: 0 0 content;
     transition: flex-basis 1s;
     margin: 5px auto;
     width: 100%;

@@ -11,6 +11,8 @@ import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
 import { CloudDownload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter } from 'lucide-react';
 import { Toggle } from './components/ui/toggle.tsx';
+//import { forceX, forceY } from './Sim.ts';
+import { clamp, nodeColor, nodeSize, forceX } from './Sim.ts';
 
 import { 
   DropdownMenu, 
@@ -27,14 +29,14 @@ import { supabase } from './lib/supabase/client.ts';
 const [LABEL_OFFSET_X, LABEL_OFFSET_Y] = [20,-20]
 
 // Fence parameters
-const fFENCE = -16;
+const fFENCE = -5;
 const FENCE_DECAY = -30;
 
 // Force strength
 //const FORCE_SCALAR = .05;
 const fGRAVITY = .0140;
 const fCHARGE = -10.999;
-const fLINK = .0505;
+const fLINK = .0105;
 const fCENTER = 0.0000;
 const fWALL = 0.0026;
 //const COMPLETED_TASK = 15 * FORCE_SCALAR;
@@ -106,81 +108,12 @@ type Node = d3.SimulationNodeDatum & {
 type Link = { source: string, target: string, id: string };
 export type TaskMap = Record<string, Task>;
 
-/** Get the hex color of a node based on its properties */
-function nodeColor( node : Node ) : string {
-  //if (node.task.isExternal) { return '#39f'}
-  if (node.task.status == 'complete') { return COLORS.node.fillComplete }
-  if (node.task.isBlocked) { return COLORS.node.fillBlocked }
-  return COLORS.node.fillAvailable;
-}
-
-/** Get the radius of a node based on its properties */
-function nodeSize(node: Node | null) : number {
-  if (!node) return 60;
-  switch (node.task.priority) {
-    case 1: return 50;
-    case 2: return 35;
-    case 3: return 25;
-    case 4: return 20;
-    case 5: return 20;
-    default: return 10;
-  }
-}
 
 /** Get the appropriate center of gravity for a given node */
 function nodeGravitySetpoint(node: Node) : number {
   if (node.task.status == 'complete') { return COMPLETED_TASK_SETPOINT; }
   if (node.task.isBlocked) { return 500; }
   return GRAVITY_SETPOINT;
-}
-
-/** Constrain a number between min and max */
-function constrain (n : number, min : number, max : number) : number {
-  return Math.min(Math.max(n,min), max)
-}
-
-/** Exert a custom y-force with exponential magnitude */
-// TO/DO1: Write forceX as related to forceY
-function forceY(y0 : number, strength : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
-  let nodes : Node[];
-  const dir = direction ? direction : 1;
-  const fIB = strength;
-  const decay = FENCE_DECAY;
-  function force(alpha : number) {
-    for (const node of nodes) {
-      if (!nodeFilter(node)) continue;
-      if (!node.y) continue;
-
-      const dy = (node.y - y0) * dir; // Positive when below line
-      const a = fIB * Math.exp(-dy / decay) * alpha * dir;
-      node.vy = constrain(a, -10, 10) + (node.vy ?? 0)
-    }
-  }
-
-  force.initialize = (n : Node[]) => {nodes = n};
-
-  return force;
-}
-
-function forceX(x0 : number, strength : number, nodeFilter : (n: Node) => boolean, direction : 1 | -1 = 1) {
-  let nodes : Node[];
-  const dir = direction ? direction : 1;
-  const fIB = strength;
-  const decay = FENCE_DECAY;
-  function force(alpha : number) {
-    for (const node of nodes) {
-      if (!nodeFilter(node)) continue;
-      if (!node.x) continue;
-
-      const dy = (node.x - x0) * dir; // Positive when below line
-      const a = fIB * Math.exp(-dy / decay) * alpha * dir;
-      node.vx = constrain(a, -10, 10) + (node.vx ?? 0)
-    }
-  }
-
-  force.initialize = (n : Node[]) => {nodes = n};
-
-  return force;
 }
 
 // TO/DO6: edit data refactor to spread nodes along y axis
@@ -264,25 +197,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   const layoutRef = useRef({blockedSetpoint:null, completedSetpoint:null})
 
   const dimsRef = useRef({width:null, height:null});
-  const container = d3.select(containerRef.current)
 
 
   // TODO3: Fix height & width
   const HEIGHT = 800;
-  const width = 500;
-
-  useEffect(() => {
-    const ro = new ResizeObserver(entries => {
-      const dims = entries[0].contentRect;
-      dimsRef.current = {width:dims.width, height:dims.height};
-      console.debug("Changing dims to", dimsRef.current);
-      resizeEvent();
-    })
-
-    ro.observe(containerRef.current)
-    return () => ro.disconnect();
-  })
-
+  //const width = 500;
 
   //console.debug('width', parseInt(container.style('width')));
 
@@ -298,7 +217,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     simRef.current.alpha(0).alphaTarget(0);
   }
 
-  function resumeSim() {
+  const resumeSim = () => {
     console.debug("Sim resuming");
     simDataRef.current.nodes.forEach(n => {
       n.fx = null;
@@ -316,14 +235,14 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     //console.log('node selection:', node.size());
 
     const n = d3.select(svgRef.current).select('g#ghost-node').append('rect')
-        .attr('width', r)
-        .attr('height', r) 
-        .attr('rx', r) 
-        .attr('ry', r)
-        .attr('x',x - r/2)
-        .attr('y',y - r/2)
-        .attr('opacity', COLORS.node.opacityGhost)
-        .raise();
+      .attr('width', r)
+      .attr('height', r) 
+      .attr('rx', r) 
+      .attr('ry', r)
+      .attr('x',x - r/2)
+      .attr('y',y - r/2)
+      .attr('opacity', COLORS.node.opacityGhost)
+      .raise();
     
     return n
   }
@@ -339,20 +258,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
       .raise();
   }
 
-  function hoverNode(event, d) {
+  const hoverNode = useCallback((_event, d) => {
     d3.select("#tooltip").classed('hidden', false);
     hoverTask(d.task.id);
-  }
+  }, [hoverTask])
 
-  function cleanup() {
-    d3.select(svgRef.current).select('g#ghost-link').selectAll('*').remove();
-    d3.select(svgRef.current).select('g#ghost-node').selectAll('*').remove();
-    d3.select(svgRef.current).select('g#node').selectAll('g').on('click.block', null);
-    d3.select('g#regions').on('click.resume', null);
-    resumeSim();
-    applyDragListener();
-
-  }
 
   function attachTooltipToMouse(event, d) {
     d3.select("#tooltip")
@@ -364,66 +274,183 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
     const { width } = dimsRef.current;
 
-    const sim = simRef.current
-    .alphaTarget(SIM.alphaTarget)
-    .alphaDecay(SIM.alphaDecay)
-    .force("charge", d3.forceManyBody().strength(fCHARGE))
-    .force("collide", d3.forceCollide(d => nodeSize(d) / 2))
-    //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
-    //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
+    simRef.current
+      .alphaTarget(SIM.alphaTarget)
+      .alphaDecay(SIM.alphaDecay)
+      .force("charge", d3.forceManyBody().strength(fCHARGE))
+      .force("collide", d3.forceCollide(d => nodeSize(d) / 2))
+      //.force("collide", d3.forceCollide(rCOLLISION)) // TODO: add priority
+      //.force("link", d3.forceLink(links).id(d => d.id).strength(fLINK))
 
-    .force('ceil', d3.forceY(0).strength(fWALL))
-    .force('floor', d3.forceY(HEIGHT).strength(fWALL))
+      .force('ceil', d3.forceY(0).strength(fWALL))
+      .force('floor', d3.forceY(HEIGHT).strength(fWALL))
 
-    //.force("center", d3.forceY(0).strength(fCENTER))
-    //.force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
-    .force('leftBound', forceX(-(width/2), -10, () => true, -1))
-    //.force('rightBound', forceX((width/2), -10, () => true, 1))
+      //.force("center", d3.forceY(0).strength(fCENTER))
+      //.force("gravity", d3.forceY(nodeGravitySetpoint).strength(fGRAVITY))
+      //.force('leftBound', forceX(-(width/2), -10, () => true, -1))
+      //.force('rightBound', forceX((width/2), -10, () => true, 1))
 
-    .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, -10, d => d.task.status != 'complete', 1))
-    .force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, -10, d => !d.task.isBlocked, -1))
-    .force("complete", forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status=='complete', -1))
-    .force("blocked", forceX(BLOCKED_SETPOINT*width, -1, d => d.task.isBlocked, 1));
+      //.force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status != 'complete', 1))
+      //.force("complete", forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status=='complete', -1))
+
+      //.force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, fFENCE, d => !d.task.isBlocked, -1))
+      //.force("blocked", forceX(BLOCKED_SETPOINT*width, fFENCE, d => d.task.isBlocked, 1));
 
   }
 
   const tickFn = useCallback(() => {
-      //const node = svg.select('g#node').selectAll('g');
-      const node = nodeRef.current;
-      const svg = d3.select(svgRef.current);
-      const {width, height} = dimsRef.current;
+    //const node = svg.select('g#node').selectAll('g');
+    const node = nodeRef.current;
+    const svg = d3.select(svgRef.current);
+    const {width, height} = dimsRef.current;
 
-      node.select('rect')
-        .attr('x', d => {
-          d.x = constrain(d.x, -width/2, width/2)
-          return d.x - (nodeSize(d) / 2)
-        })
-        .attr('y', d => {
-          d.y = constrain(d.y, 0, HEIGHT)
-          return d.y - (nodeSize(d) / 2)
-        })
+    node.select('rect')
+      .attr('x', d => {
+        d.x = clamp(d.x, -width/2, width/2)
+        return d.x - (nodeSize(d) / 2)
+      })
+      .attr('y', d => {
+        d.y = clamp(d.y, 0, HEIGHT)
+        return d.y - (nodeSize(d) / 2)
+      })
 
-      node.select('text')
-          .attr('x', d => d.x + LABEL_OFFSET_X)
-          .attr('y', d => d.y + LABEL_OFFSET_Y)
-          .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
+    node.select('text')
+        .attr('x', d => d.x + LABEL_OFFSET_X)
+        .attr('y', d => d.y + LABEL_OFFSET_Y)
+        .attr('transform', d => `rotate(-30, ${d.x+LABEL_OFFSET_X}, ${d.y+LABEL_OFFSET_Y})`)
 
-      svg.select('g#link').selectAll('line')
-        .attr('x1', d => d.source.x)
-        .attr('x2', d => d.target.x)
-        .attr('y1', d => d.source.y)
-        .attr('y2', d => d.target.y)
-      
-      svg.select('defs').selectAll('linearGradient')
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y)
-      
+    svg.select('g#link').selectAll('line')
+      .attr('x1', d => d.source.x)
+      .attr('x2', d => d.target.x)
+      .attr('y1', d => d.source.y)
+      .attr('y2', d => d.target.y)
+    
+    svg.select('defs').selectAll('linearGradient')
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y)
+    
 
-      d3.select('#debug').select('p.alpha').text(simRef.current.alpha());
+    d3.select('#debug').select('p.alpha').text(simRef.current.alpha());
 
   }, [dimsRef])
+
+
+  // Set the position attributes of links and nodes each time the simulation ticks.
+  // Reheat the simulation when drag starts, and fix the subject position.
+  function dragstarted(event, d) {
+    console.debug("Drag began on node", d.id)
+    const node = d3.select('g#node').selectAll('g');
+
+    if (!event.active) simRef.current.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+    node.on('mouseover.a', null)
+    node.on('mousemove.a', null)
+    node.on('mouseout.a', null)
+
+    d3.select('#tooltip').classed('hidden',true);
+
+    node.filter(n => n.id == event.subject.id).raise();
+    currentClickIsDrag.current = false;
+  }
+
+
+  const dragged = useCallback((event, d) => {
+    const targetNode = d;
+    const viz_regions = d3.select(svgRef.current).select('g#regions');
+    currentClickIsDrag.current = true;
+
+    const {width, height} = dimsRef.current;
+
+    //constrain(d.x, -width/2, width/2)
+    event.subject.fx = clamp(event.x, -width/2, width/2)
+    event.subject.fy = clamp(event.y, 0, HEIGHT);
+
+    // TODO4: All the dragged triggers for highlighting regions
+    if (targetNode.task.status != 'complete') {
+      viz_regions.select('#complete')
+        .attr('opacity', event.x > COMPLETED_TASK_SETPOINT * width ? 1 : 0)
+    }
+
+    if (targetNode.task.status == 'complete') {
+      viz_regions.select('#main')
+        .attr('opacity', event.x < COMPLETED_TASK_SETPOINT *width&& event.x > BLOCKED_SETPOINT*width ? 1 : 0);
+
+    }
+
+    viz_regions.select('#blocked')
+      .attr('opacity', event.x < BLOCKED_SETPOINT * width ? 1 : 0);
+
+  }, [dimsRef]);
+
+  //const container = d3.select(containerRef.current)
+  const dragended = useCallback((event, d) => {
+
+    if (!currentClickIsDrag.current) {
+      console.log("Calling dragended although this was actually a click");
+    }
+
+    const {width} = dimsRef.current;
+
+    console.debug('Drag ended on node', d.id)
+
+    //const targetNode = event.subject;
+    const targetNode = d;
+
+    // Restore the target alpha so the simulation cools after dragging ends.
+    if (!event.active) simRef.current.alphaTarget(SIM.alphaTarget);
+
+    // Unfix the subject position now that it’s no longer being dragged.
+    targetNode.fx = null;
+    targetNode.fy = null;
+
+    // TODO4: All the dragended triggers for highlighting regions
+    if (targetNode.x > COMPLETED_TASK_SETPOINT*width
+      && targetNode.task.status != 'complete') {
+
+      onCommit([{id: targetNode.id, type: 'complete'}])
+    }
+
+    if (targetNode.x < COMPLETED_TASK_SETPOINT *width
+      && targetNode.task.status == 'complete') {
+      onCommit([{id: targetNode.id, type: 'uncomplete'}])
+    }
+
+    if (targetNode.x < BLOCKED_SETPOINT*width && currentClickIsDrag.current) {
+      setAddDependencyTask(targetNode.id);
+    }
+
+
+    d3.select(svgRef.current).select('g#regions').selectAll('rect').attr('opacity',0);
+
+    const node = nodeRef.current;
+    node.on('mouseover.a', hoverNode);
+    node.on('mousemove.a', attachTooltipToMouse)
+    node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
+
+
+  }, [hoverNode, onCommit, setAddDependencyTask]);
+
+  const applyDragListener = useCallback(() => {
+    d3.select('g#node').selectAll('g').call( 
+      d3.drag()
+      .on("start.d", dragstarted)
+      .on("drag.d", dragged)
+      .on("end.d", dragended)
+    )
+  }, [dragended, dragged]);
+
+  const cleanup = useCallback(() => {
+    d3.select(svgRef.current).select('g#ghost-link').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#ghost-node').selectAll('*').remove();
+    d3.select(svgRef.current).select('g#node').selectAll('g').on('click.block', null);
+    d3.select('g#regions').on('click.resume', null);
+    resumeSim();
+    applyDragListener();
+
+  }, [applyDragListener])
 
 
 /*
@@ -472,7 +499,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     buildForceSim()
     simRef.current.on('tick', tickFn);
 
-  }, [width, HEIGHT, tickFn]);
+  }, [HEIGHT, tickFn]);
 
   function resizeEvent() {
     //const container = containerRef.current;
@@ -482,17 +509,18 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     //const {width, height} = {width: dims.x, height: dims.y};
     console.debug("Handling dims change to", width, height);
 
-    svg
-      .attr('width', width)
-      .attr('viewBox', [-width/2, 0, width, HEIGHT])
-
     const completedTaskSetpoint = COMPLETED_TASK_SETPOINT * width;
     const blockedSetpoint = BLOCKED_SETPOINT * width;
 
     const lines = [
-      { x: COMPLETED_TASK_SETPOINT*width, color: COLORS.border.complete },
+      { x: COMPLETED_TASK_SETPOINT*dimsRef.current.width, color: COLORS.border.complete },
       { x: BLOCKED_SETPOINT*width, color: COLORS.border.blocked }
     ]
+
+
+    svg
+      .attr('width', width)
+      .attr('viewBox', [-width/2, 0, width, HEIGHT])
 
     svg.select('g#borders')
       .selectAll('line')
@@ -523,14 +551,29 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     const blockedTaskRegion = makeRegion((-width/2), blockedSetpoint - (-width/2), COLORS.region.blocked).attr('id','blocked');
 
     simRef.current
-      .force('leftBound', forceX(-(width/2), -10, () => true, -1))
-      .force('rightBound', forceX((width/2), -10, () => true, 1))
+      .force('leftBound', forceX(-(width/2), fFENCE, () => true, -1))
+      .force('rightBound', forceX((width/2), fFENCE, () => true, 1))
 
-      .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, -10, d => d.task.status != 'complete', 1))
-      .force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, -10, d => !d.task.isBlocked, -1))
+      .force('centerUpperBound', forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status != 'complete', 1))
       .force("complete", forceX(COMPLETED_TASK_SETPOINT*width, fFENCE, d => d.task.status=='complete', -1))
-      .force("blocked", forceX(BLOCKED_SETPOINT*width, -1, d => d.task.isBlocked, 1));
+
+      .force('centerLowerBound', forceX(BLOCKED_SETPOINT*width, fFENCE, d => !d.task.isBlocked, -1))
+      .force("blocked", forceX(BLOCKED_SETPOINT*width, fFENCE, d => d.task.isBlocked, 1));
   }
+
+  useEffect(() => {
+    const ro = new ResizeObserver(entries => {
+      const dims = entries[0].contentRect;
+      dimsRef.current = {width:dims.width, height:dims.height};
+      console.debug("Changing dims to", dimsRef.current);
+      resizeEvent();
+    })
+
+    ro.observe(containerRef.current)
+    return () => ro.disconnect();
+  }, [])
+
+
 
 /*
  
@@ -658,110 +701,11 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     viz_regions.on('click', e => selectTask(null));
 
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
+  // eslint-disable-next-line react-hooks/exhaustive-dep
+  }, [applyDragListener, hoverNode, selectTask, solvedTasks, spawnHint, tasks]);
 
-  // Set the position attributes of links and nodes each time the simulation ticks.
-  // Reheat the simulation when drag starts, and fix the subject position.
-  function dragstarted(event, d) {
-    console.debug("Drag began on node", d.id)
-    const node = d3.select('g#node').selectAll('g');
+ 
 
-    if (!event.active) simRef.current.alpha(SIM.ambientWarm).alphaTarget(SIM.ambientWarm).restart();
-    event.subject.fx = event.subject.x;
-    event.subject.fy = event.subject.y;
-    node.on('mouseover.a', null)
-    node.on('mousemove.a', null)
-    node.on('mouseout.a', null)
-
-    d3.select('#tooltip').classed('hidden',true);
-
-    node.filter(n => n.id == event.subject.id).raise();
-    currentClickIsDrag.current = false;
-  }
-
-
-  const dragged = useCallback((event, d) => {
-    const targetNode = d;
-    const viz_regions = d3.select(svgRef.current).select('g#regions');
-    currentClickIsDrag.current = true;
-
-    const {width, height} = dimsRef.current;
-
-    //constrain(d.x, -width/2, width/2)
-    event.subject.fx = constrain(event.x, -width/2, width/2)
-    event.subject.fy = constrain(event.y, 0, HEIGHT);
-
-    // TODO4: All the dragged triggers for highlighting regions
-    if (targetNode.task.status != 'complete') {
-      viz_regions.select('#complete')
-        .attr('opacity', event.x > COMPLETED_TASK_SETPOINT * width ? 1 : 0)
-    }
-
-    if (targetNode.task.status == 'complete') {
-      viz_regions.select('#main')
-        .attr('opacity', event.x < COMPLETED_TASK_SETPOINT *width&& event.x > BLOCKED_SETPOINT*width ? 1 : 0);
-
-    }
-
-    viz_regions.select('#blocked')
-      .attr('opacity', event.x < BLOCKED_SETPOINT * width ? 1 : 0);
-
-  }, [BLOCKED_SETPOINT, dimsRef]);
-
-  const dragended = useCallback((event, d) => {
-
-    if (!currentClickIsDrag.current) {
-      console.log("Calling dragended although this was actually a click");
-    }
-
-    const {width, height} = dimsRef.current;
-
-    console.debug('Drag ended on node', d.id)
-
-    //const targetNode = event.subject;
-    const targetNode = d;
-
-    // Restore the target alpha so the simulation cools after dragging ends.
-    if (!event.active) simRef.current.alphaTarget(SIM.alphaTarget);
-
-    // Unfix the subject position now that it’s no longer being dragged.
-    targetNode.fx = null;
-    targetNode.fy = null;
-
-    // TODO4: All the dragended triggers for highlighting regions
-    if (targetNode.x > COMPLETED_TASK_SETPOINT*width
-      && targetNode.task.status != 'complete') {
-
-      onCommit([{id: targetNode.id, type: 'complete'}])
-    }
-
-    if (targetNode.x < COMPLETED_TASK_SETPOINT *width
-      && targetNode.task.status == 'complete') {
-      onCommit([{id: targetNode.id, type: 'uncomplete'}])
-    }
-
-    if (targetNode.x < BLOCKED_SETPOINT*width && currentClickIsDrag.current) {
-      setAddDependencyTask(targetNode.id);
-    }
-
-
-    d3.select(svgRef.current).select('g#regions').selectAll('rect').attr('opacity',0);
-
-    const node = nodeRef.current;
-    node.on('mouseover.a', hoverNode);
-    node.on('mousemove.a', attachTooltipToMouse)
-    node.on('mouseout.a', () => d3.select('#tooltip').classed('hidden',true))
-
-
-  }, [width])
-
-  function applyDragListener() {
-    d3.select('g#node').selectAll('g').call( d3.drag()
-      .on("start.d", dragstarted)
-      .on("drag.d", dragged)
-      .on("end.d", dragended));
-  };
 /*
  
   █████╗ ██████╗ ██████╗     ██████╗ ███████╗██████╗ ███████╗███╗   ██╗██████╗ ███████╗███╗   ██╗ ██████╗██╗   ██╗    ███████╗███████╗███████╗███████╗ ██████╗████████╗
@@ -778,15 +722,6 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
     const svg = d3.select(svgRef.current);
     const node = svg.select('g#node').selectAll('g')
     const viz_regions = svg.select('g#regions');
-
-    /**
-     * Spawn a temporary node in a new layer as a touch target
-     * @param x X position to spawn ghost node at
-     * @param y Y position to spawn ghost node at
-     * @param dependsOn 
-     * @param children 
-     * @returns d3 selection of the temporary node
-     */
 
     if (!addDependencyTask) {
       // Do cleanup
@@ -844,8 +779,7 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
 
     console.debug("sim entered add dependency mode");
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addDependencyTask])
+  }, [addDependencyTask, cleanup, onCommit, selectTask, setAddDependencyTask])
 
   // Update the subject (dragged node) position during drag.
 
@@ -863,7 +797,10 @@ export function Sim({ tasks, onCommit, selectTask, hoverTask, selectedTask, addD
   useEffect(() => {
     console.debug("Config updating", vizConfig)
 
-    d3.select(svgRef.current).selectAll('g#node g text').style('visibility', vizConfig.showLabels ? undefined : 'hidden');
+    d3.select(svgRef.current)
+      .selectAll('g#node g text')
+      .style('visibility', vizConfig.showLabels ? undefined : 'hidden');
+
   }, [vizConfig])
 
 
