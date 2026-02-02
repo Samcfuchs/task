@@ -48,7 +48,7 @@ const GRAVITY_SETPOINT = 0;
 const BLOCKED_SETPOINT = -.25;
 
 
-const COLORS = {
+export const COLORS = {
   node: {
     stroke: '#000',
     strokeWidth: 2,

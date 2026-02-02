@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 //import * as d3 from 'd3';
-import { type TaskMap } from './App.tsx'
+import { COLORS, type TaskMap } from './App.tsx'
 import { type CommitEvent, type Task } from './Tasks.ts';
 import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -207,8 +207,10 @@ function PriorityModal({defaultValue, update}) {
 }
 
 
-import { CheckIcon, XIcon } from "lucide-react"
+import { ArrowUpDownIcon, CheckIcon, CircleIcon, FilterIcon, SquareIcon, XIcon } from "lucide-react"
 import { Label } from './components/ui/label.tsx';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './components/ui/dropdown-menu.tsx';
+import { BsExclamation } from 'react-icons/bs';
 
 function CheckBox({task, onClick} : {task : Task, onClick : (t : Task) => void}) {
 
@@ -341,16 +343,18 @@ export function ListView({tasks, selectTask, onCommit, hoveredTaskID} :
     )
   }
 
-  const [excludeCompleted, setExcludeCompleted] = useState(true);
-  const [excludeBlocked, setExcludeBlocked] = useState(false);
+  const [includeCompleted, setIncludeCompleted] = useState(true);
+  const [includeBlocked, setIncludeBlocked] = useState(false);
+  const [includeExternal, setIncludeExternal] = useState(false);
 
   function sort(task1, task2) : number {
     return -(task2.priority - task1.priority);
   }
 
   function filter(t: Task) {
-    if (excludeCompleted && t.status == 'complete') return false;
-    if (excludeBlocked && t.isBlocked) return false;
+    if (!includeCompleted && t.status == 'complete') return false;
+    if (!includeBlocked && t.isBlocked) return false;
+    if (!includeExternal && t.isExternal) return false;
     return true;
   }
 
@@ -358,21 +362,47 @@ export function ListView({tasks, selectTask, onCommit, hoveredTaskID} :
   return (
     <div id='list-view'>
       <div className='buttonbar'>
-        <span>Include:</span>
-        <Toggle  
-          pressed={excludeBlocked} 
-          className='data-[state=on]:bg-red-300 '
-          onPressedChange={setExcludeBlocked}>
-            { excludeBlocked ? <XIcon /> : <CheckIcon />}
-            blocked
-        </Toggle>
-        <Toggle
-          pressed={excludeCompleted}
-          className='data-[state=on]:bg-red-300'
-          onPressedChange={setExcludeCompleted}>
-            { excludeCompleted ? <XIcon /> : <CheckIcon />}
-            completed
-        </Toggle>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant='outline'><FilterIcon /> Filters</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuGroup>
+            <DropdownMenuContent>
+            <DropdownMenuLabel>Include:</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={includeBlocked} 
+                onCheckedChange={setIncludeBlocked}>
+                  <CircleIcon fill={COLORS.node.fillBlocked}/>
+                Blocked
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={includeCompleted} 
+                onCheckedChange={setIncludeCompleted}>
+                  <CircleIcon fill={COLORS.node.fillComplete}/>
+                Complete
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={includeExternal} 
+                onCheckedChange={setIncludeExternal}>
+                  <SquareIcon />External
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenuGroup>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant='outline'><ArrowUpDownIcon />Sort</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuRadioGroup>
+            <DropdownMenuContent>
+              <DropdownMenuRadioItem
+                value={'checked'}>
+                  <BsExclamation />
+                  Priority
+              </DropdownMenuRadioItem>
+            </DropdownMenuContent>
+          </DropdownMenuRadioGroup>
+        </DropdownMenu>
       </div>
       <div id='list-items'>
         {
