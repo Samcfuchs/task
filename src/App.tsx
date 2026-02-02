@@ -9,7 +9,7 @@ import { generateID } from './Domain.ts'
 import { BsCheck, BsX } from "react-icons/bs";
 import {testDict} from './data.js';
 import { Button } from './components/ui/button.tsx';
-import { CloudDownload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter } from 'lucide-react';
+import { CloudDownload, Tag, UserIcon, LogOutIcon, ChevronDown, Undo2, Redo2, Save, Filter, CircleIcon, SquareIcon } from 'lucide-react';
 import { Toggle } from './components/ui/toggle.tsx';
 //import { forceX, forceY } from './Sim.ts';
 import { clamp, nodeColor, nodeSize, forceX } from './Sim.ts';
@@ -913,10 +913,18 @@ export default function App({user}) {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger><Filter/>Filters</DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                      <DropdownMenuCheckboxItem>Show completed tasks</DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem>Show blocked tasks</DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem>Show hidden tasks</DropdownMenuCheckboxItem>
-
+            <DropdownMenuLabel>Include:</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem>
+                  <CircleIcon fill={COLORS.node.fillBlocked}/>
+                Blocked
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem>
+                  <CircleIcon fill={COLORS.node.fillComplete}/>
+                Complete
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem>
+                  <SquareIcon />External
+              </DropdownMenuCheckboxItem>
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
               <DropdownMenuItem disabled>

@@ -14,7 +14,7 @@ lost on me.
     - [x] Select newly added nodes
     - [x] Select nodes from task list
 - [x] Add floating labels
-- [ ] Inspector
+- [x] Inspector
     - [x] Add markdown descriptions
     - [x] Design a cool checkbox
     - [x] Modifiable dependency view
@@ -30,8 +30,8 @@ lost on me.
 - [ ] Fix nodes with no data???
 - [x] Fix links unaligned to constrained nodes
 - [x] Horizontal panning (for mobile?)
-- [ ] Actually do some mobile testing
-- [ ] Live reactive
+- [x] Actually do some mobile testing
+- [x] Live reactive
     - [x] Use space more efficiently on smaller screens
 - [ ] Backend
     - [x] Write data models
@@ -51,7 +51,7 @@ lost on me.
     - [x] Horizontal scroll still has some quirks
     - [x] New accounts not able to post snapshots
     - [x] Labels not updating
-    - [ ] Fix vertical layout
+    - [x] Fix vertical layout
     - [x] Inspect sometimes goes offscreen
 
 ----
@@ -76,11 +76,10 @@ lost on me.
         - [x] Fix markdown styling
         - [ ] Allow expanding the inspector
     - [ ] List view
-        - [ ] Create expanded list view
+        - [ ] Expand/compress list view button
     - [ ] Viz
         - [ ] Play/pause button
         - [ ] Anchored nodes
-        - [ ] Zoom (horizontal)
         - [ ] Fix: ghost node covers nodes above, making them unselectable
         - [ ] Optionally hide child nodes
         - [ ] Autoscroll selected task into view
